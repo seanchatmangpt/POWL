@@ -1,0 +1,429 @@
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass
+from datetime import timedelta
+from functools import cached_property
+from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple
+
+import pandas as pd
+from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureLog
+from pm4py.objects.dfg.obj import DFG
+
+IndexPair = Tuple[int, int]
+
+
+@dataclass(frozen=True)
+class PartialOrderTrace:
+    """Event-indexed partially ordered trace variant.
+
+    ``activities`` is an ordered list of activity labels. The position in this
+    list is the event identity, therefore duplicate labels are allowed.
+
+    ``order`` is a strict partial order over event indices. It is assumed to be
+    transitive and irreflexive. For example::
+
+        activities = ("a", "b", "c", "a")
+        order = {(0, 1), (0, 2), (0, 3), (1, 3), (2, 3)}
+
+    represents a trace where the first ``a`` happens before ``b`` and ``c``,
+    ``b`` and ``c`` are unordered, and both happen before the final ``a``.
+    """
+
+    activities: Tuple[Any, ...]
+    order: FrozenSet[IndexPair] = frozenset()
+
+    def __post_init__(self):
+        activities = tuple(self.activities)
+        n = len(activities)
+        order = frozenset((int(i), int(j)) for i, j in self.order)
+
+        for i, j in order:
+            if i == j:
+                raise ValueError("partial-order relation must be irreflexive")
+            if i < 0 or j < 0 or i >= n or j >= n:
+                raise ValueError("partial-order relation contains an invalid event index")
+
+        object.__setattr__(self, "activities", activities)
+        object.__setattr__(self, "order", order)
+
+    def __len__(self) -> int:
+        return len(self.activities)
+
+    @property
+    def labels(self) -> Tuple[Any, ...]:
+        return self.activities
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.activities) == 0
+
+    @property
+    def alphabet(self) -> set:
+        return set(self.activities)
+
+    @cached_property
+    def predecessors(self) -> Tuple[FrozenSet[int], ...]:
+        preds: List[set] = [set() for _ in range(len(self))]
+        for i, j in self.order:
+            preds[j].add(i)
+        return tuple(frozenset(p) for p in preds)
+
+    @cached_property
+    def successors(self) -> Tuple[FrozenSet[int], ...]:
+        succs: List[set] = [set() for _ in range(len(self))]
+        for i, j in self.order:
+            succs[i].add(j)
+        return tuple(frozenset(s) for s in succs)
+
+    @cached_property
+    def minimal_indices(self) -> FrozenSet[int]:
+        """Events with no predecessors.
+        """
+        return frozenset(i for i in range(len(self)) if not self.predecessors[i])
+
+    @cached_property
+    def maximal_indices(self) -> FrozenSet[int]:
+        """Events with no successors.
+        """
+        return frozenset(i for i in range(len(self)) if not self.successors[i])
+
+    @classmethod
+    def empty(cls) -> "PartialOrderTrace":
+        return cls(tuple(), frozenset())
+
+    @classmethod
+    def from_timestamped_events(
+        cls,
+        activities: Sequence[Any],
+        timestamps: Sequence[Any],
+        time_window: Optional[timedelta | pd.Timedelta],
+    ) -> "PartialOrderTrace":
+        """Create a general POT from timestamped events.
+
+        Event ``i`` precedes event ``j`` iff::
+
+            timestamp_i + time_window < timestamp_j
+
+        Hence exactly equal timestamps are unordered for ``time_window=0``;
+        with a positive window, events whose timestamps are too close are also
+        unordered.
+
+        """
+        if len(activities) != len(timestamps):
+            raise ValueError("activities and timestamps must have the same length")
+        if len(activities) == 0:
+            return cls.empty()
+
+        if time_window is not None:
+            time_window = _normalize_time_window(time_window)
+
+        indexed_events = [
+            (original_index, str(activity), pd.Timestamp(timestamp))
+            for original_index, (activity, timestamp)
+            in enumerate(zip(activities, timestamps))
+        ]
+
+        indexed_events.sort(
+            key=lambda item: (
+                item[2],  # timestamp
+                item[1],  # activity label
+                item[0],  # original index as final deterministic tie-breaker
+            )
+        )
+
+        sorted_activities = tuple(
+            activity
+            for _, activity, _
+            in indexed_events
+        )
+
+        sorted_times = tuple(
+            timestamp
+            for _, _, timestamp
+            in indexed_events
+        )
+
+        order = set()
+
+        for i, time_i in enumerate(sorted_times):
+            for j, time_j in enumerate(sorted_times):
+                if i == j:
+                    continue
+
+                if _strictly_before_with_window(time_i, time_j, time_window):
+                    order.add((i, j))
+
+        return cls(sorted_activities, frozenset(order))
+
+
+    def precedes(self, i: int, j: int) -> bool:
+        return (i, j) in self.order
+
+    def concurrent(self, i: int, j: int) -> bool:
+        return i != j and (i, j) not in self.order and (j, i) not in self.order
+
+
+    def combined_project(self, group: Collection[Any]) -> "PartialOrderTrace":
+        """Combined projection for partial-order traces.
+
+        All events belonging to the group will be combined into a single sub-POT.
+        """
+        group_set = set(group)
+        kept_old_indices = [i for i, activity in enumerate(self.activities) if activity in group_set]
+        if not kept_old_indices:
+            return PartialOrderTrace.empty()
+
+        return self._create_sub_trace(kept_old_indices)
+
+
+    def split_project(self, group: Collection[Any]) -> List["PartialOrderTrace"]:
+        """Conservative split projection for partial-order traces.
+
+        Start with selected events. Events are placed in the same segment if they
+        are connected by evidence of belonging together: either concurrency or a
+        cover relation in the transitive reduction.
+        """
+        group_set = set(group)
+        if not group_set:
+            return []
+
+        group_indices = [
+            i
+            for i, activity in enumerate(self.activities)
+            if activity in group_set
+        ]
+
+        if not group_indices:
+            return []
+
+        reduction = transitive_reduction_edges(self)
+
+        def should_merge_events(id1: int, id2: int) -> bool:
+            return (
+                    self.concurrent(id1, id2)
+                    or (id1, id2) in reduction
+                    or (id2, id1) in reduction
+            )
+
+        # Build merge graph.
+        merge_graph = {
+            i: set()
+            for i in group_indices
+        }
+
+        for pos, i in enumerate(group_indices):
+            for j in group_indices[pos + 1:]:
+                if should_merge_events(i, j):
+                    merge_graph[i].add(j)
+                    merge_graph[j].add(i)
+
+        # Connected components of the merge graph.
+        components: List[List[int]] = []
+        visited = set()
+
+        for start in group_indices:
+            if start in visited:
+                continue
+
+            stack = [start]
+            visited.add(start)
+            component = []
+
+            while stack:
+                current = stack.pop()
+                component.append(current)
+
+                for neighbor in merge_graph[current]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        stack.append(neighbor)
+
+            components.append(component)
+
+        def make_subtrace(old_indices: List[int]) -> "PartialOrderTrace":
+            old_indices = sorted(old_indices)
+            return self._create_sub_trace(old_indices)
+
+        return [
+            make_subtrace(component)
+            for component in sorted(components, key=lambda c: min(c))
+        ]
+
+    def _create_sub_trace(self, old_indices):
+        old_to_new = {old_i: new_i for new_i, old_i in enumerate(old_indices)}
+        new_activities = tuple(self.activities[i] for i in old_indices)
+        new_order = frozenset(
+            (old_to_new[i], old_to_new[j])
+            for i, j in self.order
+            if i in old_to_new and j in old_to_new
+        )
+        return PartialOrderTrace(new_activities, new_order)
+
+
+def _normalize_time_window(window: timedelta | pd.Timedelta) -> pd.Timedelta:
+    """Normalize the timestamp tolerance window.
+
+    We intentionally require a real timedelta object instead of accepting
+    numbers or strings, because numeric windows are ambiguous and can hide
+    mistakes.
+    """
+
+    if isinstance(window, pd.Timedelta):
+        return window
+
+    if isinstance(window, timedelta):
+        return pd.Timedelta(window)
+
+    raise TypeError(
+        "time_window must be None, datetime.timedelta, or pandas.Timedelta"
+    )
+
+
+def _strictly_before_with_window(time_i: Any, time_j: Any, window: pd.Timedelta) -> bool:
+    if window is None:
+        return pd.Timestamp(time_i) < pd.Timestamp(time_j)
+    else:
+        return pd.Timestamp(time_i) + window < pd.Timestamp(time_j)
+
+
+def get_partial_order_variants(traces: Iterable[PartialOrderTrace]) -> Counter:
+    """
+    Convert POTs to a Counter-based variant representation.
+    """
+    log = Counter()
+    for variant in traces:
+        key = PartialOrderTrace(variant.activities, variant.order)
+        log[key] += 1
+    return log
+
+
+def discover_dfg_efg_pot(log: Counter[PartialOrderTrace]) -> Tuple[DFG, Counter]:
+    """
+    Discover a full-frequency start/end/DFG/EFG artifacts from partial-order variants.
+    """
+    dfg = DFG()
+    efg = Counter()
+    for trace, trace_freq in _iter_pot_variants(log):
+        if len(trace) == 0:
+            continue
+        start, end, local_dfg, local_efg = _full_frequency_counters(trace)
+        for activity, value in start.items():
+            dfg.start_activities[activity] += trace_freq * value
+        for activity, value in end.items():
+            dfg.end_activities[activity] += trace_freq * value
+        for pair, value in local_dfg.items():
+            dfg.graph[pair] += trace_freq * value
+        for pair, value in local_efg.items():
+            efg[pair] += trace_freq * value
+    return dfg, efg
+
+
+def _iter_pot_variants(log: Counter[PartialOrderTrace]):
+    for trace, freq in log.items():
+        yield trace, freq
+
+
+def _full_frequency_counters(trace: PartialOrderTrace) -> Tuple[Counter, Counter, Counter, Counter]:
+    """Full-frequency start/end/DFG/EFG counters for one trace occurrence.
+
+    Semantics:
+
+    * start: every minimal event receives count 1;
+    * end: every maximal event receives count 1;
+    * DFG: every cover relation in the transitive reduction receives count 1;
+    * EFG: every relation in the partial order receives count 1.
+    """
+    labels = trace.activities
+
+    start = Counter()
+    end = Counter()
+    dfg = Counter()
+    efg = Counter()
+
+    for i in trace.minimal_indices:
+        start[labels[i]] += 1
+
+    for i in trace.maximal_indices:
+        end[labels[i]] += 1
+
+    for i, j in transitive_reduction_edges(trace):
+        dfg[(labels[i], labels[j])] += 1
+
+    for i, j in trace.order:
+        efg[(labels[i], labels[j])] += 1
+
+    return start, end, dfg, efg
+
+
+def transitive_reduction_edges(trace: PartialOrderTrace) -> FrozenSet[IndexPair]:
+    """Return the cover relations of the partial order.
+
+    An edge ``i -> j`` is removed if there exists an intermediate event ``k``
+    such that ``i -> k`` and ``k -> j`` are both present.
+    """
+    reduction = set(trace.order)
+    for i, j in list(trace.order):
+        for k in range(len(trace)):
+            if k == i or k == j:
+                continue
+            if (i, k) in trace.order and (k, j) in trace.order:
+                reduction.discard((i, j))
+                break
+    return frozenset(reduction)
+
+
+class IMDataStructurePOT(IMDataStructureLog[Counter]):
+    """Inductive-miner data structure for partially ordered trace variants."""
+
+    def __init__(
+        self,
+        obj: Counter[PartialOrderTrace],
+        dfg: Optional[DFG] = None,
+        efg: Optional[Counter] = None,
+    ):
+        super().__init__(obj)
+
+        if dfg is not None and efg is not None:
+            self._dfg = dfg
+            self._efg = efg
+        else:
+            artifacts = discover_dfg_efg_pot(obj)
+            self._dfg = artifacts[0]
+            self._efg = artifacts[1]
+
+    @property
+    def dfg(self) -> DFG:
+        return self._dfg
+
+    @property
+    def efg(self) -> Counter:
+        return self._efg
+
+
+def is_pot_data_structure(obj: Any) -> bool:
+    return isinstance(obj, IMDataStructurePOT)
+
+
+def combined_project_pot_on_groups(
+    log: Counter[PartialOrderTrace],
+    groups: List[Collection[Any]],
+    keep_empty: bool = True,
+) -> List[IMDataStructurePOT]:
+    projected_logs = [Counter() for _ in groups]
+    for trace, freq in log.items():
+        for i, group in enumerate(groups):
+            projected = trace.combined_project(group)
+            if keep_empty or len(projected) > 0:
+                projected_logs[i][projected] += freq
+    return [IMDataStructurePOT(projected_log) for projected_log in projected_logs]
+
+
+def split_project_pot_on_groups(log: Counter, groups: List[Collection[Any]]) -> List[IMDataStructurePOT]:
+    projected_logs = [Counter() for _ in groups]
+    for trace, freq in log.items():
+        for i, group in enumerate(groups):
+            for projected in trace.split_project(group):
+                if len(projected) > 0:
+                    projected_logs[i][projected] += freq
+    return [IMDataStructurePOT(projected_log) for projected_log in projected_logs]
