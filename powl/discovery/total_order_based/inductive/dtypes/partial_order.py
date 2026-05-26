@@ -105,7 +105,7 @@ class PartialOrderTrace:
 
             timestamp_i + time_window < timestamp_j
 
-        Hence exactly equal timestamps are unordered for ``time_window=0``;
+        Hence, exactly equal timestamps are unordered for ``time_window=0``;
         with a positive window, events whose timestamps are too close are also
         unordered.
 
@@ -307,7 +307,7 @@ def discover_dfg_efg_pot(log: Counter[PartialOrderTrace]) -> Tuple[DFG, Counter]
     for trace, trace_freq in _iter_pot_variants(log):
         if len(trace) == 0:
             continue
-        start, end, local_dfg, local_efg = _full_frequency_counters(trace)
+        start, end, local_dfg, local_efg = _trace_normalized_expanded_counters(trace)
         for activity, value in start.items():
             dfg.start_activities[activity] += trace_freq * value
         for activity, value in end.items():
@@ -324,34 +324,98 @@ def _iter_pot_variants(log: Counter[PartialOrderTrace]):
         yield trace, freq
 
 
-def _full_frequency_counters(trace: PartialOrderTrace) -> Tuple[Counter, Counter, Counter, Counter]:
-    """Full-frequency start/end/DFG/EFG counters for one trace occurrence.
+def _trace_normalized_expanded_counters(
+    trace: PartialOrderTrace,
+) -> Tuple[Counter, Counter, Counter, Counter]:
+    """Trace-normalized expanded start/end/DFG/EFG counters.
 
     Semantics:
 
-    * start: every minimal event receives count 1;
-    * end: every maximal event receives count 1;
-    * DFG: every cover relation in the transitive reduction receives count 1;
-    * EFG: every relation in the partial order receives count 1.
+    DFG/start/end:
+    * Add a hidden SOURCE with edges to all minimal events.
+    * Add a hidden SINK with edges from all maximal events.
+    * Add cover relations from the transitive reduction.
+    * Add concurrency as bidirectional local possibilities.
+    * Normalize outgoing mass per source node/event inside this trace.
+
+    EFG:
+    * For ordered event pairs i < j, add full mass 1 to label_i -> label_j.
+    * For concurrent event pairs i || j, split pair mass equally:
+      label_i -> label_j += 0.5
+      label_j -> label_i += 0.5
     """
     labels = trace.activities
+    n = len(trace)
 
     start = Counter()
     end = Counter()
     dfg = Counter()
     efg = Counter()
 
+    if n == 0:
+        return start, end, dfg, efg
+
+    source = -1
+    sink = n
+
+    # ------------------------------------------------------------------
+    # DFG + start/end via hidden SOURCE/SINK and local outgoing normalization
+    # ------------------------------------------------------------------
+    expanded_edges = set()
+
+    # SOURCE -> minimal events
     for i in trace.minimal_indices:
-        start[labels[i]] += 1
+        expanded_edges.add((source, i))
 
+    # maximal events -> SINK
     for i in trace.maximal_indices:
-        end[labels[i]] += 1
+        expanded_edges.add((i, sink))
 
-    for i, j in transitive_reduction_edges(trace):
-        dfg[(labels[i], labels[j])] += 1
+    # Direct causal edges
+    expanded_edges.update(transitive_reduction_edges(trace))
 
-    for i, j in trace.order:
-        efg[(labels[i], labels[j])] += 1
+    # Concurrent events as bidirectional local possibilities
+    for i in range(n):
+        for j in range(i + 1, n):
+            if trace.concurrent(i, j):
+                expanded_edges.add((i, j))
+                expanded_edges.add((j, i))
+
+    outgoing = {}
+    for src, tgt in expanded_edges:
+        outgoing.setdefault(src, []).append(tgt)
+
+    for src, targets in outgoing.items():
+        weight = 1.0 / len(targets)
+
+        for tgt in targets:
+            if src == source:
+                # Hidden SOURCE -> activity
+                start[labels[tgt]] += weight
+
+            elif tgt == sink:
+                # activity -> hidden SINK
+                end[labels[src]] += weight
+
+            else:
+                # activity -> activity
+                dfg[(labels[src], labels[tgt])] += weight
+
+    # ------------------------------------------------------------------
+    # EFG via pairwise eventual-order evidence
+    # ------------------------------------------------------------------
+    for i in range(n):
+        for j in range(i + 1, n):
+            if trace.precedes(i, j):
+                efg[(labels[i], labels[j])] += 1.0
+
+            elif trace.precedes(j, i):
+                efg[(labels[j], labels[i])] += 1.0
+
+            else:
+                # i || j: split the unordered pair mass equally
+                efg[(labels[i], labels[j])] += 0.5
+                efg[(labels[j], labels[i])] += 0.5
 
     return start, end, dfg, efg
 
