@@ -8,7 +8,7 @@ from functools import cached_property
 from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple, Literal
 
 import pandas as pd
-from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureLog
+from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureUVCL
 from pm4py.objects.dfg.obj import DFG
 
 
@@ -495,7 +495,7 @@ def _trace_normalized_expanded_counters(
     return start, end, dfg, efg
 
 
-class IMDataStructurePOT(IMDataStructureLog[Counter]):
+class IMDataStructurePOT(IMDataStructureUVCL):
     """Inductive-miner data structure for partially ordered trace variants."""
 
     def __init__(
