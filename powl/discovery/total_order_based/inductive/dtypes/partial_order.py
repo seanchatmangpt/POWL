@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections import Counter
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cached_property
-from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple, Literal
 
 import pandas as pd
 from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureLog
 from pm4py.objects.dfg.obj import DFG
+
+
+ArtifactWeighting = Literal["normalized", "unit"]
 
 IndexPair = Tuple[int, int]
 
@@ -37,12 +41,6 @@ class PartialOrderTrace:
         activities = tuple(self.activities)
         n = len(activities)
         order = frozenset((int(i), int(j)) for i, j in self.order)
-
-        for i, j in order:
-            if i == j:
-                raise ValueError("partial-order relation must be irreflexive")
-            if i < 0 or j < 0 or i >= n or j >= n:
-                raise ValueError("partial-order relation contains an invalid event index")
 
         object.__setattr__(self, "activities", activities)
         object.__setattr__(self, "order", order)
@@ -75,6 +73,14 @@ class PartialOrderTrace:
         for i, j in self.order:
             succs[i].add(j)
         return tuple(frozenset(s) for s in succs)
+
+    @cached_property
+    def transitive_reduction_edges(self) -> FrozenSet[IndexPair]:
+        return frozenset(
+            (i, j)
+            for i, j in self.order
+            if not (self.successors[i] & self.predecessors[j])
+        )
 
     @cached_property
     def minimal_indices(self) -> FrozenSet[int]:
@@ -119,7 +125,7 @@ class PartialOrderTrace:
             time_window = _normalize_time_window(time_window)
 
         indexed_events = [
-            (original_index, str(activity), pd.Timestamp(timestamp))
+            (original_index, activity, pd.Timestamp(timestamp))
             for original_index, (activity, timestamp)
             in enumerate(zip(activities, timestamps))
         ]
@@ -147,12 +153,19 @@ class PartialOrderTrace:
         order = set()
 
         for i, time_i in enumerate(sorted_times):
-            for j, time_j in enumerate(sorted_times):
-                if i == j:
-                    continue
+            threshold = time_i if time_window is None else time_i + time_window
+            first_j = bisect_right(sorted_times, threshold)
 
-                if _strictly_before_with_window(time_i, time_j, time_window):
-                    order.add((i, j))
+            for j in range(first_j, len(sorted_times)):
+                order.add((i, j))
+
+        # for i, time_i in enumerate(sorted_times):
+        #     for j, time_j in enumerate(sorted_times):
+        #         if i == j:
+        #             continue
+        #
+        #         if _strictly_before_with_window(time_i, time_j, time_window):
+        #             order.add((i, j))
 
         return cls(sorted_activities, frozenset(order))
 
@@ -197,7 +210,7 @@ class PartialOrderTrace:
         if not group_indices:
             return []
 
-        reduction = transitive_reduction_edges(self)
+        reduction = self.transitive_reduction_edges
 
         def should_merge_events(id1: int, id2: int) -> bool:
             return (
@@ -253,11 +266,14 @@ class PartialOrderTrace:
     def _create_sub_trace(self, old_indices):
         old_to_new = {old_i: new_i for new_i, old_i in enumerate(old_indices)}
         new_activities = tuple(self.activities[i] for i in old_indices)
+
         new_order = frozenset(
             (old_to_new[i], old_to_new[j])
-            for i, j in self.order
-            if i in old_to_new and j in old_to_new
+            for i in old_indices
+            for j in self.successors[i]
+            if j in old_indices
         )
+
         return PartialOrderTrace(new_activities, new_order)
 
 
@@ -269,22 +285,24 @@ def _normalize_time_window(window: timedelta | pd.Timedelta) -> pd.Timedelta:
     mistakes.
     """
 
-    if isinstance(window, pd.Timedelta):
-        return window
-
     if isinstance(window, timedelta):
-        return pd.Timedelta(window)
+        window = pd.Timedelta(window)
+    elif not isinstance(window, pd.Timedelta):
+        raise TypeError(
+            "time_window must be None, datetime.timedelta, or pandas.Timedelta"
+        )
 
-    raise TypeError(
-        "time_window must be None, datetime.timedelta, or pandas.Timedelta"
-    )
+    if window < pd.Timedelta(0):
+        raise ValueError("time_window must be non-negative")
+
+    return window
 
 
-def _strictly_before_with_window(time_i: Any, time_j: Any, window: pd.Timedelta) -> bool:
-    if window is None:
-        return pd.Timestamp(time_i) < pd.Timestamp(time_j)
-    else:
-        return pd.Timestamp(time_i) + window < pd.Timestamp(time_j)
+# def _strictly_before_with_window(time_i: Any, time_j: Any, window: Optional[pd.Timedelta]) -> bool:
+#     if window is None:
+#         return pd.Timestamp(time_i) < pd.Timestamp(time_j)
+#     else:
+#         return pd.Timestamp(time_i) + window < pd.Timestamp(time_j)
 
 
 def get_partial_order_variants(traces: Iterable[PartialOrderTrace]) -> Counter:
@@ -298,7 +316,10 @@ def get_partial_order_variants(traces: Iterable[PartialOrderTrace]) -> Counter:
     return log
 
 
-def discover_dfg_efg_pot(log: Counter[PartialOrderTrace]) -> Tuple[DFG, Counter]:
+def discover_dfg_efg_pot(
+        log: Counter[PartialOrderTrace],
+        weighting: ArtifactWeighting = "unit",
+) -> Tuple[DFG, Counter]:
     """
     Discover a full-frequency start/end/DFG/EFG artifacts from partial-order variants.
     """
@@ -307,7 +328,12 @@ def discover_dfg_efg_pot(log: Counter[PartialOrderTrace]) -> Tuple[DFG, Counter]
     for trace, trace_freq in _iter_pot_variants(log):
         if len(trace) == 0:
             continue
-        start, end, local_dfg, local_efg = _trace_normalized_expanded_counters(trace)
+        if weighting == "normalized":
+            start, end, local_dfg, local_efg = _trace_normalized_expanded_counters(trace)
+        elif weighting == "unit":
+            start, end, local_dfg, local_efg = _trace_unit_expanded_counters(trace)
+        else:
+            raise ValueError("weighting must be 'unit' or 'normalized'")
         for activity, value in start.items():
             dfg.start_activities[activity] += trace_freq * value
         for activity, value in end.items():
@@ -322,6 +348,56 @@ def discover_dfg_efg_pot(log: Counter[PartialOrderTrace]) -> Tuple[DFG, Counter]
 def _iter_pot_variants(log: Counter[PartialOrderTrace]):
     for trace, freq in log.items():
         yield trace, freq
+
+
+def _trace_unit_expanded_counters(
+    trace: PartialOrderTrace,
+) -> Tuple[Counter, Counter, Counter, Counter]:
+    """Unit-weight expanded start/end/DFG/EFG counters.
+
+    * For ordered event pairs i < j, add full mass 1.0 to label_i -> label_j.
+    * For concurrent event pairs i || j, add full unit mass in both directions:
+      label_i -> label_j += 1.0
+      label_j -> label_i += 1.0
+    """
+    labels = trace.activities
+    order = trace.order
+    n = len(trace)
+
+    start = Counter()
+    end = Counter()
+    dfg = Counter()
+    efg = Counter()
+
+    # start
+    for i in trace.minimal_indices:
+        start[labels[i]] += 1.0
+
+    # end
+    for i in trace.maximal_indices:
+        end[labels[i]] += 1.0
+
+    # causal DFG edges
+    for i, j in trace.transitive_reduction_edges:
+        dfg[(labels[i], labels[j])] += 1.0
+
+    # pairwise EFG and concurrent DFG
+    for i in range(n):
+        for j in range(i + 1, n):
+            if (i, j) in order:
+                efg[(labels[i], labels[j])] += 1.0
+            elif (j, i) in order:
+                efg[(labels[j], labels[i])] += 1.0
+            else:
+                # DFG edges
+                dfg[(labels[i], labels[j])] += 1.0
+                dfg[(labels[j], labels[i])] += 1.0
+                # EFG edges
+                efg[(labels[i], labels[j])] += 1.0
+                efg[(labels[j], labels[i])] += 1.0
+
+    return start, end, dfg, efg
+
 
 
 def _trace_normalized_expanded_counters(
@@ -372,12 +448,27 @@ def _trace_normalized_expanded_counters(
         expanded_edges.add((i, sink))
 
     # Direct causal edges
-    expanded_edges.update(transitive_reduction_edges(trace))
+    expanded_edges.update(trace.transitive_reduction_edges)
 
-    # Concurrent events as bidirectional local possibilities
+    order = trace.order
+
+    # ------------------------------------------------------------------
+    # EFG via pairwise eventual-order evidence
+    # Concurrent events as bidirectional local possibilities for the DFG
+    # ------------------------------------------------------------------
     for i in range(n):
         for j in range(i + 1, n):
-            if trace.concurrent(i, j):
+            if (i, j) in order:
+                efg[(labels[i], labels[j])] += 1.0
+
+            elif (j, i) in order:
+                efg[(labels[j], labels[i])] += 1.0
+
+            else:
+                # i || j: split the unordered pair mass equally
+                efg[(labels[i], labels[j])] += 0.5
+                efg[(labels[j], labels[i])] += 0.5
+                # add DFG expanded edges
                 expanded_edges.add((i, j))
                 expanded_edges.add((j, i))
 
@@ -401,40 +492,7 @@ def _trace_normalized_expanded_counters(
                 # activity -> activity
                 dfg[(labels[src], labels[tgt])] += weight
 
-    # ------------------------------------------------------------------
-    # EFG via pairwise eventual-order evidence
-    # ------------------------------------------------------------------
-    for i in range(n):
-        for j in range(i + 1, n):
-            if trace.precedes(i, j):
-                efg[(labels[i], labels[j])] += 1.0
-
-            elif trace.precedes(j, i):
-                efg[(labels[j], labels[i])] += 1.0
-
-            else:
-                # i || j: split the unordered pair mass equally
-                efg[(labels[i], labels[j])] += 0.5
-                efg[(labels[j], labels[i])] += 0.5
-
     return start, end, dfg, efg
-
-
-def transitive_reduction_edges(trace: PartialOrderTrace) -> FrozenSet[IndexPair]:
-    """Return the cover relations of the partial order.
-
-    An edge ``i -> j`` is removed if there exists an intermediate event ``k``
-    such that ``i -> k`` and ``k -> j`` are both present.
-    """
-    reduction = set(trace.order)
-    for i, j in list(trace.order):
-        for k in range(len(trace)):
-            if k == i or k == j:
-                continue
-            if (i, k) in trace.order and (k, j) in trace.order:
-                reduction.discard((i, j))
-                break
-    return frozenset(reduction)
 
 
 class IMDataStructurePOT(IMDataStructureLog[Counter]):
@@ -447,6 +505,9 @@ class IMDataStructurePOT(IMDataStructureLog[Counter]):
         efg: Optional[Counter] = None,
     ):
         super().__init__(obj)
+
+        if (dfg is None) != (efg is None):
+            raise ValueError("dfg and efg must be provided together")
 
         if dfg is not None and efg is not None:
             self._dfg = dfg
@@ -483,7 +544,10 @@ def combined_project_pot_on_groups(
     return [IMDataStructurePOT(projected_log) for projected_log in projected_logs]
 
 
-def split_project_pot_on_groups(log: Counter, groups: List[Collection[Any]]) -> List[IMDataStructurePOT]:
+def split_project_pot_on_groups(
+        log: Counter[PartialOrderTrace],
+        groups: List[Collection[Any]]
+) -> List[IMDataStructurePOT]:
     projected_logs = [Counter() for _ in groups]
     for trace, freq in log.items():
         for i, group in enumerate(groups):
