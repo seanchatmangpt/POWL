@@ -1,14 +1,17 @@
 from typing import Any, Dict, Optional, Type, Union
+from datetime import timedelta
+from collections import Counter
 
 import pandas as pd
+import pm4py
 from pm4py import util
 from pm4py.algo.discovery.inductive.algorithm import Parameters
 from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureUVCL
 from pm4py.objects.log.obj import EventLog
 from pm4py.util import exec_utils, xes_constants as xes_util
 from pm4py.util.compression import util as comut
-from pm4py.util.compression.dtypes import UVCL
 
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT, log_to_pot_variants
 from powl.discovery.total_order_based.inductive.variants.im_brute_force import (
     POWLInductiveMinerBruteForce,
 )
@@ -59,11 +62,14 @@ def get_variant(variant: POWLDiscoveryVariant) -> Type[IMBasePOWL]:
         raise Exception("Invalid Variant!")
 
 
+
 def apply(
-    obj: Union[EventLog, pd.DataFrame, UVCL],
+    obj: Union[EventLog, pd.DataFrame],
     parameters: Optional[Dict[Any, Any]] = None,
     variant=DEFAULT_POWL_MINER,
     simplify=True,
+    time_ordering: bool = True,
+    time_window: Optional[Union[timedelta, pd.Timedelta]] = None,
 ) -> TaggedPOWL:
     if parameters is None:
         parameters = {}
@@ -76,18 +82,32 @@ def apply(
     cidk = exec_utils.get_param_value(
         Parameters.CASE_ID_KEY, parameters, util.constants.CASE_CONCEPT_NAME
     )
-    if type(obj) in [EventLog, pd.DataFrame]:
+
+    if time_ordering:
+        if isinstance(obj, EventLog):
+            obj = pm4py.convert_to_dataframe(obj)
+        pot_variants = log_to_pot_variants(
+            obj,
+            activity_key=ack,
+            timestamp_key=tk,
+            case_id_key=cidk,
+            time_window=time_window,
+        )
+        data_structure = IMDataStructurePOT(pot_variants)
+
+    else:
         uvcl = comut.get_variants(
             comut.project_univariate(
                 obj, key=ack, df_glue=cidk, df_sorting_criterion_key=tk
             )
         )
-    else:
-        uvcl = obj
+
+        data_structure = IMDataStructureUVCL(uvcl)
 
     algorithm = get_variant(variant)
     im = algorithm(parameters)
-    res = im.apply(IMDataStructureUVCL(uvcl), parameters)
+    res = im.apply(data_structure, parameters)
+    
     if simplify:
         res = res.normalize()
 

@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cached_property
-from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple, Literal
+from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple, Literal, Union
 
 import pandas as pd
 from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureUVCL
@@ -39,7 +39,6 @@ class PartialOrderTrace:
 
     def __post_init__(self):
         activities = tuple(self.activities)
-        n = len(activities)
         order = frozenset((int(i), int(j)) for i, j in self.order)
 
         object.__setattr__(self, "activities", activities)
@@ -303,6 +302,31 @@ def _normalize_time_window(window: timedelta | pd.Timedelta) -> pd.Timedelta:
 #         return pd.Timestamp(time_i) < pd.Timestamp(time_j)
 #     else:
 #         return pd.Timestamp(time_i) + window < pd.Timestamp(time_j)
+
+
+def log_to_pot_variants(
+    df: pd.DataFrame,
+    activity_key: str,
+    timestamp_key: str,
+    case_id_key: str,
+    time_window: Optional[Union[timedelta, pd.Timedelta]],
+) -> Counter:
+    traces = []
+
+    for _, case_df in df.groupby(case_id_key, sort=False):
+        case_df = case_df.sort_values(
+            by=[timestamp_key, activity_key],
+            kind="stable",
+        )
+
+        trace = PartialOrderTrace.from_timestamped_events(
+            activities=case_df[activity_key].tolist(),
+            timestamps=case_df[timestamp_key].tolist(),
+            time_window=time_window,
+        )
+        traces.append(trace)
+
+    return get_partial_order_variants(traces)
 
 
 def get_partial_order_variants(traces: Iterable[PartialOrderTrace]) -> Counter:
