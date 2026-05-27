@@ -8,9 +8,8 @@ from functools import cached_property
 from typing import Any, Collection, FrozenSet, Iterable, List, Optional, Sequence, Tuple, Literal, Union
 
 import pandas as pd
-from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureUVCL
+from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureLog
 from pm4py.objects.dfg.obj import DFG
-
 
 ArtifactWeighting = Literal["normalized", "unit"]
 
@@ -519,7 +518,7 @@ def _trace_normalized_expanded_counters(
     return start, end, dfg, efg
 
 
-class IMDataStructurePOT(IMDataStructureUVCL):
+class IMDataStructurePOT(IMDataStructureLog[Counter[PartialOrderTrace]]):
     """Inductive-miner data structure for partially ordered trace variants."""
 
     def __init__(
@@ -528,6 +527,7 @@ class IMDataStructurePOT(IMDataStructureUVCL):
         dfg: Optional[DFG] = None,
         efg: Optional[Counter] = None,
     ):
+
         super().__init__(obj)
 
         if (dfg is None) != (efg is None):
@@ -540,6 +540,7 @@ class IMDataStructurePOT(IMDataStructureUVCL):
             artifacts = discover_dfg_efg_pot(obj)
             self._dfg = artifacts[0]
             self._efg = artifacts[1]
+
 
     @property
     def dfg(self) -> DFG:
