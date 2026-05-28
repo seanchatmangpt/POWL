@@ -11,9 +11,11 @@ from pm4py.algo.discovery.inductive.fall_through.abc import FallThrough
 
 from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT
 from powl.discovery.total_order_based.inductive.fall_through.activity_concurrent import (
+    POWLActivityConcurrentPOT,
     POWLActivityConcurrentUVCL,
 )
 from powl.discovery.total_order_based.inductive.fall_through.activity_once_per_trace import (
+    POWLActivityOncePerTracePOT,
     POWLActivityOncePerTraceUVCL,
 )
 from powl.discovery.total_order_based.inductive.fall_through.decision_graph.dfg_fall_through import (
@@ -63,7 +65,9 @@ class FallThroughFactory:
 
         elif type(obj) is IMDataStructurePOT:
             return [
-                POWLFlowerModelPOT
+                POWLActivityOncePerTracePOT,
+                POWLActivityConcurrentPOT,
+                POWLFlowerModelPOT,
             ]
 
         elif type(obj) is IMDataStructureDFG:
