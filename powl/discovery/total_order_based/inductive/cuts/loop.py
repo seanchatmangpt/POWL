@@ -10,6 +10,7 @@ from pm4py.algo.discovery.inductive.dtypes.im_ds import (
 )
 from pm4py.objects.dfg.obj import DFG
 
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT, split_project_pot_on_groups
 from powl.discovery.total_order_based.inductive.modeling import LoopSpec
 
 
@@ -22,6 +23,15 @@ class POWLLoopCut(LoopCut, ABC, Generic[T]):
 class POWLLoopCutUVCL(LoopCutUVCL, POWLLoopCut[IMDataStructureUVCL]):
     pass
 
+class POWLLoopCutPOT(POWLLoopCut[IMDataStructurePOT]):
+    @classmethod
+    def project(
+        cls,
+        obj: IMDataStructurePOT,
+        groups: List[Collection[Any]],
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> List[IMDataStructurePOT]:
+        return split_project_pot_on_groups(obj.data_structure, groups)
 
 class POWLLoopCutDFG(LoopCutDFG, POWLLoopCut[IMDataStructureDFG]):
     @classmethod

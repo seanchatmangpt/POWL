@@ -12,6 +12,7 @@ from pm4py.algo.discovery.inductive.dtypes.im_ds import (
     IMDataStructureUVCL,
 )
 
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT, combined_project_pot_on_groups
 from powl.discovery.total_order_based.inductive.modeling import PartialOrderSpec
 from powl.discovery.total_order_based.inductive.variants.maximal.maximal_partial_order_cut import \
     MaximalPartialOrderCutDFG
@@ -30,6 +31,15 @@ class POWLConcurrencyCutUVCL(
 ):
     pass
 
+class POWLConcurrencyCutPOT(POWLConcurrencyCut[IMDataStructurePOT]):
+    @classmethod
+    def project(
+            cls,
+            obj: IMDataStructurePOT,
+            groups: List[Collection[Any]],
+            parameters: Optional[Dict[str, Any]] = None,
+    ) -> List[IMDataStructurePOT]:
+        return combined_project_pot_on_groups(obj.data_structure, groups)
 
 class POWLConcurrencyCutDFG(ConcurrencyCutDFG, POWLConcurrencyCut[IMDataStructureDFG]):
     @classmethod

@@ -15,6 +15,7 @@ from pm4py.objects.dfg.util import get_transitive_relations
 
 from pm4py.algo.discovery.inductive.variants.imf import IMFParameters
 from pm4py.util import exec_utils
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT, combined_project_pot_on_groups
 from powl.discovery.total_order_based.inductive.utils.filtering import (
     FILTERING_THRESHOLD,
     FILTERING_TYPE,
@@ -232,6 +233,15 @@ class MaximalPartialOrderCutUVCL(MaximalPartialOrderCut[IMDataStructureUVCL]):
     ) -> List[IMDataStructureUVCL]:
         return project_on_groups_with_unique_activities(obj.data_structure, groups)
 
+class MaximalPartialOrderCutPOT(MaximalPartialOrderCut[IMDataStructurePOT]):
+    @classmethod
+    def project(
+        cls,
+        obj: IMDataStructurePOT,
+        groups: List[Collection[Any]],
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> List[IMDataStructurePOT]:
+        return combined_project_pot_on_groups(obj.data_structure, groups)
 
 class MaximalPartialOrderCutDFG(MaximalPartialOrderCut[IMDataStructureDFG]):
     @classmethod

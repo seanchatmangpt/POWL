@@ -11,6 +11,7 @@ from pm4py.objects.dfg.obj import DFG
 from pm4py.util import exec_utils
 from pm4py.algo.discovery.inductive.variants.imf import IMFParameters
 
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT, split_project_pot_on_groups
 from powl.discovery.total_order_based.inductive.utils.filtering import FILTERING_TYPE, FilteringType
 from powl.discovery.total_order_based.inductive.variants.decision_graph.max_decision_graph_cut import (
     MaximalDecisionGraphCut
@@ -77,6 +78,15 @@ class CyclicDecisionGraphCutUVCL(CyclicDecisionGraphCut[IMDataStructureUVCL], AB
 
         return [IMDataStructureUVCL(l) for l in logs]
 
+class CyclicDecisionGraphCutPOT(CyclicDecisionGraphCut[IMDataStructurePOT], ABC):
+    @classmethod
+    def project(
+            cls,
+            obj: IMDataStructurePOT,
+            groups: List[Collection[Any]],
+            parameters: Optional[Dict[str, Any]] = None,
+    ) -> List[IMDataStructurePOT]:
+        return split_project_pot_on_groups(obj.data_structure, groups)
 
 class CyclicDecisionGraphCutDFG(CyclicDecisionGraphCut[IMDataStructureDFG], ABC):
     @classmethod
