@@ -313,11 +313,6 @@ def log_to_pot_variants(
     traces = []
 
     for _, case_df in df.groupby(case_id_key, sort=False):
-        case_df = case_df.sort_values(
-            by=[timestamp_key, activity_key],
-            kind="stable",
-        )
-
         trace = PartialOrderTrace.from_timestamped_events(
             activities=case_df[activity_key].tolist(),
             timestamps=case_df[timestamp_key].tolist(),
