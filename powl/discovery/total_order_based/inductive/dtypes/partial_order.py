@@ -12,6 +12,7 @@ from pm4py.algo.discovery.inductive.dtypes.im_ds import IMDataStructureLog
 from pm4py.objects.dfg.obj import DFG
 
 ArtifactWeighting = Literal["normalized", "unit"]
+BoundaryMode = Literal["end_to_start", "any_to_start"]
 
 IndexPair = Tuple[int, int]
 
@@ -217,14 +218,78 @@ class PartialOrderTrace:
                     or (id2, id1) in reduction
             )
 
-        # Build merge graph.
-        merge_graph = {
-            i: set()
-            for i in group_indices
-        }
+        return self._split_by_merge_predicate(
+            group_indices,
+            should_merge_events,
+        )
 
-        for pos, i in enumerate(group_indices):
-            for j in group_indices[pos + 1:]:
+    def split_project_by_start_boundaries(
+            self,
+            boundary_mode: BoundaryMode,
+            start_activities: Collection[Any],
+            end_activities: Collection[Any] = frozenset(),
+    ) -> List["PartialOrderTrace"]:
+        """Split the whole POT into fragments using start-activity boundaries.
+
+        All events are considered.
+
+        Merge rules:
+        * concurrent events are always merged
+        * transitive-reduction edges are merged unless they cross a boundary
+
+        Boundary modes:
+        * "end_to_start": cut only direct cover edges from end activity to start activity
+        * "any_to_start": cut every direct cover edge leading to a start activity
+        """
+        if self.is_empty:
+            return []
+
+        if boundary_mode not in ("end_to_start", "any_to_start"):
+            raise ValueError(
+                "boundary_mode must be 'end_to_start' or 'any_to_start'"
+            )
+
+        start_set = set(start_activities)
+        end_set = set(end_activities)
+
+        all_indices = list(range(len(self)))
+        reduction = self.transitive_reduction_edges
+
+        def is_boundary_edge(src: int, tgt: int) -> bool:
+            tgt_is_start = self.activities[tgt] in start_set
+
+            if boundary_mode == "end_to_start":
+                return tgt_is_start and self.activities[src] in end_set
+
+            # boundary_mode == "any_to_start"
+            return tgt_is_start
+
+        def should_merge_events(id1: int, id2: int) -> bool:
+            if self.concurrent(id1, id2):
+                return True
+
+            if (id1, id2) in reduction:
+                return not is_boundary_edge(id1, id2)
+
+            if (id2, id1) in reduction:
+                return not is_boundary_edge(id2, id1)
+
+            return False
+
+        return self._split_by_merge_predicate(
+            all_indices,
+            should_merge_events,
+        )
+
+    def _split_by_merge_predicate(
+            self,
+            indices: Sequence[int],
+            should_merge_events,
+    ) -> List["PartialOrderTrace"]:
+        merge_graph = {i: set() for i in indices}
+
+        for pos, i in enumerate(indices):
+            for j in indices[pos + 1:]:
                 if should_merge_events(i, j):
                     merge_graph[i].add(j)
                     merge_graph[j].add(i)
@@ -233,7 +298,7 @@ class PartialOrderTrace:
         components: List[List[int]] = []
         visited = set()
 
-        for start in group_indices:
+        for start in indices:
             if start in visited:
                 continue
 
@@ -252,12 +317,8 @@ class PartialOrderTrace:
 
             components.append(component)
 
-        def make_subtrace(old_indices: List[int]) -> "PartialOrderTrace":
-            old_indices = sorted(old_indices)
-            return self._create_sub_trace(old_indices)
-
         return [
-            make_subtrace(component)
+            self._create_sub_trace(sorted(component))
             for component in sorted(components, key=lambda c: min(c))
         ]
 
@@ -575,3 +636,22 @@ def split_project_pot_on_groups(
                 if len(projected) > 0:
                     projected_logs[i][projected] += freq
     return [IMDataStructurePOT(projected_log) for projected_log in projected_logs]
+
+def split_project_pot_by_start_boundaries(
+    log: Counter[PartialOrderTrace],
+    boundary_mode: BoundaryMode,
+    start_activities: Collection[Any],
+    end_activities: Collection[Any] = frozenset(),
+) -> IMDataStructurePOT:
+    projected_log = Counter()
+
+    for trace, freq in log.items():
+        for projected in trace.split_project_by_start_boundaries(
+            boundary_mode=boundary_mode,
+            start_activities=start_activities,
+            end_activities=end_activities,
+        ):
+            if len(projected) > 0:
+                projected_log[projected] += freq
+
+    return IMDataStructurePOT(projected_log)
