@@ -168,7 +168,7 @@ class MaximalPartialOrderCut(Cut[T], ABC, Generic[T]):
                     IMFParameters.NOISE_THRESHOLD, parameters, 0.0
                 )
 
-        if type(obj) is IMDataStructureUVCL:
+        if type(obj) is IMDataStructureUVCL or type(obj) is IMDataStructurePOT:
             efg = filter_efg_based_on_filtered_dfg(obj, alphabet, dfg, noise_threshold)
         elif type(obj) is IMDataStructureDFG:
             _, post_sets = get_transitive_relations(dfg)
