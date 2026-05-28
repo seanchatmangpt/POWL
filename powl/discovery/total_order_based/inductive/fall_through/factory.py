@@ -9,6 +9,7 @@ from pm4py.algo.discovery.inductive.dtypes.im_ds import (
 )
 from pm4py.algo.discovery.inductive.fall_through.abc import FallThrough
 
+from powl.discovery.total_order_based.inductive.dtypes.partial_order import IMDataStructurePOT
 from powl.discovery.total_order_based.inductive.fall_through.activity_concurrent import (
     POWLActivityConcurrentUVCL,
 )
@@ -20,6 +21,7 @@ from powl.discovery.total_order_based.inductive.fall_through.decision_graph.dfg_
 )
 from powl.discovery.total_order_based.inductive.fall_through.flower import (
     POWLFlowerModelDFG,
+    POWLFlowerModelPOT,
     POWLFlowerModelUVCL,
 )
 from powl.discovery.total_order_based.inductive.fall_through.strict_tau_loop import (
@@ -58,6 +60,12 @@ class FallThroughFactory:
                     POWLTauLoopUVCL,
                     POWLFlowerModelUVCL,
                 ]
+
+        elif type(obj) is IMDataStructurePOT:
+            return [
+                POWLFlowerModelPOT
+            ]
+
         elif type(obj) is IMDataStructureDFG:
             return [POWLFlowerModelDFG]
         return list()
