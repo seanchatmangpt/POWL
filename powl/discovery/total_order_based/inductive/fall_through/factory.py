@@ -27,9 +27,11 @@ from powl.discovery.total_order_based.inductive.fall_through.flower import (
     POWLFlowerModelUVCL,
 )
 from powl.discovery.total_order_based.inductive.fall_through.strict_tau_loop import (
+    POWLStrictTauLoopPOT,
     POWLStrictTauLoopUVCL,
 )
 from powl.discovery.total_order_based.inductive.fall_through.tau_loop import (
+    POWLTauLoopPOT,
     POWLTauLoopUVCL,
 )
 from powl.discovery.total_order_based.inductive.modeling import InductiveModel
@@ -67,6 +69,8 @@ class FallThroughFactory:
             return [
                 POWLActivityOncePerTracePOT,
                 POWLActivityConcurrentPOT,
+                POWLStrictTauLoopPOT,
+                POWLTauLoopPOT,
                 POWLFlowerModelPOT,
             ]
 
