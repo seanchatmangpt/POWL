@@ -17,4 +17,4 @@ from powl.main import (
 from powl.io.powl_json import read_powl_json, write_powl_json
 
 __name__ = "powl"
-__version__ = "2.3.6"
+__version__ = "2.3.7"
