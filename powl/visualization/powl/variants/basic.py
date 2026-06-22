@@ -10,7 +10,7 @@ from powl.objects.tagged_powl.base import TaggedPOWL
 from powl.objects.tagged_powl.choice_graph import ChoiceGraph
 from powl.objects.tagged_powl.partial_order import PartialOrder
 
-min_width = "1.5"
+min_width = "1.2"
 fillcolor = "#fcfcfc"
 opacity_change_ratio = 0.02
 FONT_SIZE = "18"
@@ -22,8 +22,8 @@ def apply(powl: TaggedPOWL) -> Digraph:
 
     viz = Digraph("powl", filename=filename.name, engine="dot")
     viz.attr("node", shape="ellipse", fixedsize="false")
-    viz.attr(nodesep="1")
-    viz.attr(ranksep="1")
+    viz.attr(nodesep="1.2")
+    viz.attr(ranksep="1.2")
     viz.attr(compound="true")
     viz.attr(overlap="scale")
     viz.attr(splines="true")
@@ -57,6 +57,18 @@ def mark_block(block, powl: TaggedPOWL):
                                 </TABLE>>"""
         )
         block.attr(labeljust="r")
+
+
+def make_hidden_layout_node(block, node_id: str):
+    block.node(
+        node_id,
+        label="",
+        shape="point",
+        width="0.01",
+        height="0.01",
+        fixedsize="true",
+        style="invis",
+    )
 
 
 def repr_powl(powl: TaggedPOWL, viz, level: int):
@@ -137,8 +149,47 @@ def repr_powl(powl: TaggedPOWL, viz, level: int):
             this_node_id = make_anchor(block, block_id)
 
             reduced = powl.transitive_reduction()
-            for child in powl.children:
+
+            children = list(powl.children)
+
+            start_children = [child for child in children if powl._g.in_degree(child) == 0]
+            end_children = [child for child in children if powl._g.out_degree(child) == 0]
+
+            add_hidden_start = 0 < len(start_children) < len(children)
+            add_hidden_end = 0 < len(end_children) < len(children)
+
+            start_id = None
+            end_id = None
+
+            if add_hidden_start:
+                start_id = f"hidden_start_{this_node_id}"
+                make_hidden_layout_node(block, start_id)
+
+            if add_hidden_end:
+                end_id = f"hidden_end_{this_node_id}"
+                make_hidden_layout_node(block, end_id)
+
+            for child in children:
                 child_id_map[child] = repr_powl(child, block, level + 1)
+
+                if add_hidden_start and child in start_children:
+                    add_edge(
+                        block,
+                        (start_id, None),
+                        child_id_map[child],
+                        directory="none",
+                        style="invis",
+                    )
+
+                if add_hidden_end and child in end_children:
+                    add_edge(
+                        block,
+                        child_id_map[child],
+                        (end_id, None),
+                        directory="none",
+                        style="invis",
+                    )
+
             for u, v in reduced.edges:
                 add_edge(block, child_id_map[u], child_id_map[v])
 
