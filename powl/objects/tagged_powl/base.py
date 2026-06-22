@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 from .types import ModelType
 
@@ -21,13 +21,14 @@ class TaggedPOWL(ABC):
       - Structural comparison is provided via same_structure().
     """
 
-    __slots__ = ("model_type", "min_freq", "max_freq")
+    __slots__ = ("model_type", "min_freq", "max_freq", "attributes")
 
     def __init__(
         self,
         model_type: ModelType,
         min_freq: int = 1,
         max_freq: Optional[int] = 1,
+        attributes: Optional[Mapping[str, Any]] = None,
     ) -> None:
         # Prevent direct instantiation of the abstract base even if someone tries.
         if type(self) is TaggedPOWL:
@@ -37,6 +38,7 @@ class TaggedPOWL(ABC):
         self.model_type: ModelType = model_type
         self.min_freq: int = int(min_freq)
         self.max_freq: Optional[int] = None if max_freq is None else int(max_freq)
+        self.attributes: dict[str, Any] = dict(attributes or {})
 
     # ---------- required interface ----------
     @abstractmethod
@@ -83,6 +85,12 @@ class TaggedPOWL(ABC):
         self.min_freq = int(min_freq)
         self.max_freq = None if max_freq is None else int(max_freq)
 
+    def set_attribute(self, key: str, value: Any) -> None:
+        self.attributes[key] = value
+
+    def get_attribute(self, key: str, default: Any = None) -> Any:
+        return self.attributes.get(key, default)
+
     def is_skippable(self) -> bool:
         return self.min_freq == 0
 
@@ -103,6 +111,7 @@ class TaggedPOWL(ABC):
             self.model_type == other.model_type
             and self.min_freq == other.min_freq
             and self.max_freq == other.max_freq
+            and self.attributes == other.attributes
         )
 
     # ---------- safe defaults for node identity ----------

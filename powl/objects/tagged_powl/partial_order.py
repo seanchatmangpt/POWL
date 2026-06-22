@@ -65,6 +65,7 @@ class PartialOrder(GraphBacked):
             "max_freq": self.max_freq,
             "nodes": [n.to_dict() for n in nodes],
             "edges": edges,
+            "attributes": dict(self.attributes),
         }
 
     def _reduce_silent_activities(self) -> "PartialOrder":

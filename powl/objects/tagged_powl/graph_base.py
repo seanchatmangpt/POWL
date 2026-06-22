@@ -109,8 +109,9 @@ class GraphBacked(TaggedPOWL, ABC):
         cls = type(self)
         new = cls.__new__(cls)  # type: ignore[misc]
         # Manually init base parts (bypassing subclass __init__)
-        TaggedPOWL.__init__(new, self.model_type, self.min_freq, self.max_freq)  # type: ignore[arg-type]
+        TaggedPOWL.__init__(new, self.model_type, self.min_freq, self.max_freq, attributes=dict(self.attributes))  # type: ignore[arg-type]
         GraphBacked.__init__(new, self.model_type, min_freq=self.min_freq, max_freq=self.max_freq)  # type: ignore[misc]
+        new.attributes = dict(self.attributes)
         new._g = self._g.copy()
         return new
 

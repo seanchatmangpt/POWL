@@ -162,6 +162,7 @@ class ChoiceGraph(GraphBacked):
             min_freq=self.min_freq,
             max_freq=self.max_freq,
         )
+        new.attributes = dict(self.attributes)
         return new
 
     def normalize(self) -> TaggedPOWL:
@@ -183,6 +184,7 @@ class ChoiceGraph(GraphBacked):
             "edges": edges,
             "start_nodes": start,
             "end_nodes": end,
+            "attributes": dict(self.attributes),
         }
 
     def _reduce_silent_activities(self) -> TaggedPOWL:

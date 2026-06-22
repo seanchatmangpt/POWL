@@ -148,7 +148,7 @@ def discover(
     from powl.discovery.total_order_based import algorithm as powl_discovery
 
     return powl_discovery.apply(
-        log, variant=variant, parameters=properties, simplify=simplify
+        log, variant=variant, parameters=properties, simplify=simplify, time_ordering=False,
     )
 
 

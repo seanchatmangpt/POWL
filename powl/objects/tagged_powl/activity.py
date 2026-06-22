@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from .base import TaggedPOWL
 from .types import ModelType
@@ -16,12 +16,18 @@ class Activity(TaggedPOWL):
         role: Optional[str] = None,
         min_freq: int = 1,
         max_freq: Optional[int] = 1,
+        attributes: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         label = None  -> silent (τ) activity
         label = str   -> observable activity
         """
-        super().__init__(ModelType.Activity, min_freq=min_freq, max_freq=max_freq)
+        super().__init__(
+            ModelType.Activity,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            attributes=attributes,
+        )
         if label is not None and not isinstance(label, str):
             raise TypeError(f"label must be str or None, got {type(label).__name__}")
         self.label = label
@@ -48,6 +54,7 @@ class Activity(TaggedPOWL):
             role=self.role,
             min_freq=self.min_freq,
             max_freq=self.max_freq,
+            attributes=dict(self.attributes),
         )
 
     def normalize(self) -> "Activity":
@@ -70,6 +77,7 @@ class Activity(TaggedPOWL):
             "label": self.label,  # None => silent
             "organization": self.organization,
             "role": self.role,
+            "attributes": dict(self.attributes),
         }
 
     @classmethod
@@ -80,4 +88,5 @@ class Activity(TaggedPOWL):
             role=data.get("role"),
             min_freq=int(data.get("min_freq", 1)),
             max_freq=data.get("max_freq", 1),
+            attributes=data.get("attributes") or {},
         )
