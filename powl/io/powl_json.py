@@ -500,23 +500,21 @@ def _validate_attributes(value: Any, *, allowed: set[str], path: str) -> dict[st
 
 
 def _validate_partial_order_graph(graph: nx.DiGraph, *, path: str) -> None:
-    if not nx.is_directed_acyclic_graph(graph):
-        try:
-            cycle = nx.find_cycle(graph, orientation="original")
-        except nx.NetworkXNoCycle:
-            cycle = "unknown"
-        raise PowlJsonValidationError(f"{path} must be acyclic; found cycle {cycle}.")
-    for source, target in list(graph.edges()):
-        if source == target:
-            raise PowlJsonValidationError(f"{path} contains self-loop {source!r} -> {target!r}.")
-        graph.remove_edge(source, target)
-        redundant = nx.has_path(graph, source, target)
-        graph.add_edge(source, target)
-        if redundant:
-            raise PowlJsonValidationError(
-                f"{path} is not transitively reduced; edge {source!r} -> {target!r} "
-                "is implied by another path."
-            )
+    try:
+        reduced_graph = nx.transitive_reduction(graph)
+    except nx.NetworkXError as exc:
+        raise PowlJsonValidationError(
+            f"{path} must be acyclic."
+        ) from exc
+
+    redundant_edges = set(graph.edges()) - set(reduced_graph.edges())
+
+    if redundant_edges:
+        source, target = next(iter(redundant_edges))
+        raise PowlJsonValidationError(
+            f"{path} is not transitively reduced; edge "
+            f"{source!r} -> {target!r} is implied by another path."
+        )
 
 
 def _validate_partial_order_for_writing(
