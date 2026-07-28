@@ -1,6 +1,6 @@
 name = "powlFormal"
 version = "0.1.0"
-defaultTargets = ["POWL", "powlVerifier"]
+defaultTargets = ["POWL"]
 
 [[require]]
 name = "mathlib"
