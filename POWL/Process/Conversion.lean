@@ -73,13 +73,18 @@ def comp (ab : Translation A B Label) (bc : Translation B C Label) :
   sourceLanguage := ab.sourceLanguage
   targetLanguage := bc.targetLanguage
 
-/-- A reusable proof combinator for conversion pipelines. -/
+/-- A reusable proof combinator for conversion pipelines with aligned intermediate semantics. -/
 theorem comp_preserves (ab : Translation A B Label) (bc : Translation B C Label)
-    (hab : ab.PreservesLanguage) (hbc : bc.PreservesLanguage) :
+    (hab : ab.PreservesLanguage) (hbc : bc.PreservesLanguage)
+    (hcompat : bc.sourceLanguage = ab.targetLanguage) :
     (ab.comp bc).PreservesLanguage := by
   intro source
   change bc.targetLanguage (bc.translate (ab.translate source)) = ab.sourceLanguage source
-  rw [hbc, hab]
+  calc
+    bc.targetLanguage (bc.translate (ab.translate source))
+        = bc.sourceLanguage (ab.translate source) := hbc _
+    _ = ab.targetLanguage (ab.translate source) := congrFun hcompat _
+    _ = ab.sourceLanguage source := hab _
 
 end Translation
 end Conversion
