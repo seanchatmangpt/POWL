@@ -63,11 +63,11 @@ def coverage : List CoverageEntry := [
   ⟨"Dockerfile; .github/workflows/**", .deployment, ".github/workflows/lean.yml", "kernel build executes in CI"⟩
 ]
 
-/-- Coverage as a decidable finite proposition. -/
+/-- Coverage as a finite proposition. -/
 def Covers (subsystem : Subsystem) : Prop := subsystem ∈ coverage.map (·.subsystem)
 
 /-- The manifest has a witness for every declared repository subsystem. -/
 theorem coverage_complete (subsystem : Subsystem) : Covers subsystem := by
-  cases subsystem <;> decide
+  cases subsystem <;> simp [Covers, coverage]
 
 end POWL.Repository
