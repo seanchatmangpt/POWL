@@ -24,6 +24,7 @@ permissions:
 jobs:
   leanchecker:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
@@ -43,11 +44,33 @@ jobs:
           lake update
           lake exe cache get
           lake build POWL --wfail
-      - name: Replay POWL with Lean checker
-        run: lake env leanchecker POWL
+      - name: Replay formal modules sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
+          modules=(
+            POWL.Foundation.Frequency
+            POWL.Foundation.Relation
+            POWL.Semantics.Language
+            POWL.Model
+            POWL.Process.EventLog
+            POWL.Process.Interchange
+            POWL.Process.Discovery
+            POWL.Process.Normalization
+            POWL.Process.Conversion
+            POWL.Process.Visualization
+            POWL.Process.PublicAPI
+            POWL.Repository.Coverage
+            POWL.Examples
+          )
+          for module in "${modules[@]}"; do
+            echo "Replaying ${module}"
+            lake env leanchecker "${module}"
+          done
 
   nanoda:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
@@ -114,13 +137,6 @@ jobs:
             _nanoda_lib/target/release/nanoda_bin _nanoda_config.json
             printf '%s\n' '{"nanoda":"success","sorryAx":"refused","module":"POWL","toolchain":"leanprover/lean4:v4.32.1"}' > nanoda-receipt.json
           ) 2>&1 | tee nanoda-check.log
-      - name: Upload nanoda check log
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: nanoda-check-log
-          path: nanoda-check.log
-          if-no-files-found: error
       - name: Enforce nanoda check
         if: steps.check.outcome != 'success'
         run: exit 1
