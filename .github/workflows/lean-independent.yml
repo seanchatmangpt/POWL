@@ -119,6 +119,7 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
+          set +e
           set -o pipefail
           (
             set -euo pipefail
@@ -137,6 +138,16 @@ jobs:
             _nanoda_lib/target/release/nanoda_bin _nanoda_config.json
             printf '%s\n' '{"nanoda":"success","sorryAx":"refused","module":"POWL","toolchain":"leanprover/lean4:v4.32.1"}' > nanoda-receipt.json
           ) 2>&1 | tee nanoda-check.log
+          status=${PIPESTATUS[0]}
+          tail -n 300 nanoda-check.log > nanoda-check-tail.log
+          exit "$status"
+      - name: Upload nanoda check tail
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nanoda-check-tail
+          path: nanoda-check-tail.log
+          if-no-files-found: error
       - name: Enforce nanoda check
         if: steps.check.outcome != 'success'
         run: exit 1
