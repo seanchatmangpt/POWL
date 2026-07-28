@@ -32,11 +32,11 @@ def activityTrace
 
 /-- Adjacency semantics underlying a directly-follows graph. -/
 def DirectlyFollows {α : Type u} (trace : List α) (a b : α) : Prop :=
-  ∃ prefix suffix, trace = prefix ++ a :: b :: suffix
+  ∃ front back, trace = front ++ [a, b] ++ back
 
 /-- Reachability semantics underlying an eventually-follows graph. -/
 def EventuallyFollows {α : Type u} (trace : List α) (a b : α) : Prop :=
-  ∃ prefix middle suffix, trace = prefix ++ a :: middle ++ b :: suffix
+  ∃ front middle back, trace = front ++ [a] ++ middle ++ [b] ++ back
 
 /-- A trace whose event order is explicitly partial rather than inferred from one timestamp sort. -/
 structure PartiallyOrderedTrace (Event : Type u) where
