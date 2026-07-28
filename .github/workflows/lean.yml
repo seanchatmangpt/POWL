@@ -1,0 +1,35 @@
+name: Lean
+
+on:
+  push:
+    paths:
+      - "**/*.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/lean.yml"
+  pull_request:
+    paths:
+      - "**/*.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/lean.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: .
+          build-args: "--wfail"
+          use-github-cache: true
+          use-mathlib-cache: true
+          leanchecker: true
+          nanoda: true
+          nanoda-allow-sorry: false
+      - name: Run formalization receipt
+        run: lake exe powlVerifier
