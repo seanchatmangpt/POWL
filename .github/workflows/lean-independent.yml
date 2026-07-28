@@ -47,24 +47,41 @@ jobs:
           lake build POWL --wfail
 
       - name: Run Lean environment checker
+        id: checker
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          checker_path="$(elan which leanchecker 2>/dev/null || true)"
-          if [ -n "$checker_path" ] && [ -x "$checker_path" ]; then
-            lake env leanchecker
-          else
-            git clone https://github.com/leanprover/lean4checker.git _lean4checker
-            toolchain_version="$(cut -d: -f2 < lean-toolchain)"
-            (
-              cd _lean4checker
-              git checkout "$toolchain_version"
-              cp ../lean-toolchain .
-              lake build
-              if [ -f ./test.sh ]; then ./test.sh; else lake test; fi
-            )
-            lake env _lean4checker/.lake/build/bin/lean4checker
-          fi
+          set -o pipefail
+          (
+            set -euo pipefail
+            checker_path="$(elan which leanchecker 2>/dev/null || true)"
+            if [ -n "$checker_path" ] && [ -x "$checker_path" ]; then
+              lake env leanchecker
+            else
+              git clone https://github.com/leanprover/lean4checker.git _lean4checker
+              toolchain_version="$(cut -d: -f2 < lean-toolchain)"
+              (
+                cd _lean4checker
+                git checkout "$toolchain_version"
+                cp ../lean-toolchain .
+                lake build
+                if [ -f ./test.sh ]; then ./test.sh; else lake test; fi
+              )
+              lake env _lean4checker/.lake/build/bin/lean4checker
+            fi
+          ) 2>&1 | tee leanchecker.log
+
+      - name: Upload Lean checker log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: leanchecker-log
+          path: leanchecker.log
+          if-no-files-found: error
+
+      - name: Enforce Lean environment checker
+        if: steps.checker.outcome != 'success'
+        run: exit 1
 
       - name: Build independent nanoda checker
         shell: bash
