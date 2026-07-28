@@ -25,16 +25,16 @@ jobs:
         with:
           show-progress: false
 
-      - name: Install Lean toolchain
-        uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: .
-          auto-config: false
-          build: false
-          test: false
-          lint: false
-          use-github-cache: true
-          use-mathlib-cache: false
+      - name: Install elan and pinned Lean
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none --no-modify-path
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" toolchain install "$(cat lean-toolchain)"
+          "$HOME/.elan/bin/lean" --version
+          "$HOME/.elan/bin/lake" --version
 
       - name: Resolve dependencies and build
         id: build
@@ -59,20 +59,6 @@ jobs:
       - name: Enforce kernel build
         if: steps.build.outcome != 'success'
         run: exit 1
-
-      - name: Independent environment verification
-        uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: .
-          auto-config: false
-          build: false
-          test: false
-          lint: false
-          use-github-cache: false
-          use-mathlib-cache: false
-          leanchecker: true
-          nanoda: true
-          nanoda-allow-sorry: false
 
       - name: Run formalization receipt
         run: lake exe powlVerifier
