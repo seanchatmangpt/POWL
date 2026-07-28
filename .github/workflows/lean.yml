@@ -14,6 +14,10 @@ on:
       - "lean-toolchain"
       - ".github/workflows/lean.yml"
 
+concurrency:
+  group: lean-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
