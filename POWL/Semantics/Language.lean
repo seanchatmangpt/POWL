@@ -60,10 +60,10 @@ def boundedPower (body : Language α) (frequency : Frequency) : Language α :=
 
 @[simp] theorem atom_ne_epsilon (a : α) : atom a ≠ epsilon := by
   intro h
-  have : [a] ∈ (epsilon : Language α) := by
+  have impossible : [a] ∈ (epsilon : Language α) := by
     rw [← h]
     simp [atom]
-  simpa [epsilon] using this
+  simp [epsilon] at impossible
 
 end Language
 end POWL
