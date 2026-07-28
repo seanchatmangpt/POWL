@@ -7,6 +7,12 @@ on:
       - "lakefile.toml"
       - "lean-toolchain"
       - ".github/workflows/lean.yml"
+  pull_request:
+    paths:
+      - "**/*.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/lean.yml"
 
 concurrency:
   group: lean-${{ github.workflow }}-${{ github.ref }}
