@@ -22,13 +22,12 @@ permissions:
   contents: read
 
 jobs:
-  independent:
+  leanchecker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           show-progress: false
-
       - name: Install elan and pinned Lean
         shell: bash
         run: |
@@ -37,7 +36,6 @@ jobs:
           ./elan-init -y --default-toolchain none --no-modify-path
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
           "$HOME/.elan/bin/elan" toolchain install "$(cat lean-toolchain)"
-
       - name: Build admitted environment
         shell: bash
         run: |
@@ -45,59 +43,90 @@ jobs:
           lake update
           lake exe cache get
           lake build POWL --wfail
+      - name: Replay POWL with Lean checker
+        run: lake env leanchecker POWL
 
-      - name: Run Lean environment checker
-        id: checker
+  nanoda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          show-progress: false
+      - name: Install elan and pinned Lean
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none --no-modify-path
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" toolchain install "$(cat lean-toolchain)"
+      - name: Build admitted environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          lake update
+          lake exe cache get
+          lake build POWL --wfail
+      - name: Build nanoda toolchain
+        id: tools
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          lake env leanchecker POWL 2>&1 | tee leanchecker.log
-
-      - name: Upload Lean checker log
+          (
+            set -euo pipefail
+            git clone --depth 1 https://github.com/leanprover/lean4export.git _lean4export
+            cp lean-toolchain _lean4export/lean-toolchain
+            (cd _lean4export && lake build)
+            git clone --depth 1 --branch debug https://github.com/ammkrn/nanoda_lib.git _nanoda_lib
+            (cd _nanoda_lib && cargo build --release)
+          ) 2>&1 | tee nanoda-build.log
+      - name: Upload nanoda build log
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: leanchecker-log
-          path: leanchecker.log
+          name: nanoda-build-log
+          path: nanoda-build.log
           if-no-files-found: error
-
-      - name: Enforce Lean environment checker
-        if: steps.checker.outcome != 'success'
+      - name: Enforce nanoda toolchain build
+        if: steps.tools.outcome != 'success'
         run: exit 1
-
-      - name: Build independent nanoda checker
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/leanprover/lean4export.git _lean4export
-          cp lean-toolchain _lean4export/lean-toolchain
-          (cd _lean4export && lake build)
-          git clone --depth 1 --branch debug https://github.com/ammkrn/nanoda_lib.git _nanoda_lib
-          (cd _nanoda_lib && cargo build --release)
-
       - name: Export and check POWL environment
+        id: check
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          lake env _lean4export/.lake/build/bin/lean4export POWL > _nanoda_export.txt
-          cat > _nanoda_config.json <<'JSON'
-          {
-            "export_file_path": "_nanoda_export.txt",
-            "use_stdin": false,
-            "permitted_axioms": ["propext", "Classical.choice", "Quot.sound", "Lean.trustCompiler"],
-            "unpermitted_axiom_hard_error": true,
-            "nat_extension": true,
-            "string_extension": true,
-            "print_success_message": true
-          }
-          JSON
-          _nanoda_lib/target/release/nanoda_bin _nanoda_config.json
-          printf '%s\n' '{"leanchecker":"success","nanoda":"success","sorryAx":"refused","module":"POWL","toolchain":"leanprover/lean4:v4.32.1"}' > independent-checker-receipt.json
-
-      - name: Upload independent checker receipt
+          set -o pipefail
+          (
+            set -euo pipefail
+            lake env _lean4export/.lake/build/bin/lean4export POWL > _nanoda_export.txt
+            cat > _nanoda_config.json <<'JSON'
+            {
+              "export_file_path": "_nanoda_export.txt",
+              "use_stdin": false,
+              "permitted_axioms": ["propext", "Classical.choice", "Quot.sound", "Lean.trustCompiler"],
+              "unpermitted_axiom_hard_error": true,
+              "nat_extension": true,
+              "string_extension": true,
+              "print_success_message": true
+            }
+            JSON
+            _nanoda_lib/target/release/nanoda_bin _nanoda_config.json
+            printf '%s\n' '{"nanoda":"success","sorryAx":"refused","module":"POWL","toolchain":"leanprover/lean4:v4.32.1"}' > nanoda-receipt.json
+          ) 2>&1 | tee nanoda-check.log
+      - name: Upload nanoda check log
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: lean-independent-checker-receipt
-          path: independent-checker-receipt.json
+          name: nanoda-check-log
+          path: nanoda-check.log
+          if-no-files-found: error
+      - name: Enforce nanoda check
+        if: steps.check.outcome != 'success'
+        run: exit 1
+      - name: Upload nanoda receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: nanoda-receipt
+          path: nanoda-receipt.json
           if-no-files-found: error
