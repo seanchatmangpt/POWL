@@ -75,9 +75,11 @@ def zeroOrMore : Frequency where
 @[simp] theorem once_allows_iff (count : Nat) : once.Allows count ↔ count = 1 := by
   constructor
   · intro h
-    rcases h with ⟨lower, upper⟩
-    have upper' : count ≤ 1 := upper 1 rfl
-    omega
+    have lower : 1 ≤ count := by
+      simpa [Allows, once] using h.1
+    have upper : count ≤ 1 := by
+      simpa [once] using h.2 1 rfl
+    exact Nat.le_antisymm upper lower
   · rintro rfl
     exact allows_min once
 
