@@ -124,17 +124,16 @@ jobs:
           (
             set -euo pipefail
             lake env _lean4export/.lake/build/bin/lean4export POWL > _nanoda_export.txt
-            cat > _nanoda_config.json <<'JSON'
-            {
-              "export_file_path": "_nanoda_export.txt",
-              "use_stdin": false,
-              "permitted_axioms": ["propext", "Classical.choice", "Quot.sound", "Lean.trustCompiler"],
-              "unpermitted_axiom_hard_error": true,
-              "nat_extension": true,
-              "string_extension": true,
-              "print_success_message": true
-            }
-            JSON
+            printf '%s\n' \
+              '{' \
+              '  "export_file_path": "_nanoda_export.txt",' \
+              '  "use_stdin": false,' \
+              '  "permitted_axioms": ["propext", "Classical.choice", "Quot.sound", "Lean.trustCompiler"],' \
+              '  "unpermitted_axiom_hard_error": true,' \
+              '  "nat_extension": true,' \
+              '  "string_extension": true,' \
+              '  "print_success_message": true' \
+              '}' > _nanoda_config.json
             _nanoda_lib/target/release/nanoda_bin _nanoda_config.json
             printf '%s\n' '{"nanoda":"success","sorryAx":"refused","module":"POWL","toolchain":"leanprover/lean4:v4.32.1"}' > nanoda-receipt.json
           ) 2>&1 | tee nanoda-check.log
