@@ -3,6 +3,8 @@ name: mfw-pypi-validation-capsule
 on:
   push:
     branches: ["validation/mfw-pypi-planning-5e9b3c41"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
