@@ -1,0 +1,9 @@
+{
+  "schema": "urn:mfw:pypi-planner-validation-capsule:v1",
+  "source_repository": "seanchatmangpt/mfw",
+  "source_head_sha": "5e9b3c41c1f4aa6de9522828716ffe41e70b760b",
+  "source_tree_sha": "6adb0f95b867d50fa6199e5516f06dfbb677cefc",
+  "source_capsule_sha256": "0b809d52aa61bb6b5cfb7bb6440d805e3b6d95b53aa9b7991e52070c765bab92",
+  "canonical_path": "tools/mfw-pypi-planner",
+  "purpose": "Independent public-runner validation projection; not a canonical editing surface"
+}
