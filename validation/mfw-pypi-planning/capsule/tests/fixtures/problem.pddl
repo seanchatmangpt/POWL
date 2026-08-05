@@ -1,0 +1,5 @@
+(define (problem mfw-pypi-smoke-problem)
+  (:domain mfw-pypi-smoke)
+  (:init (ready))
+  (:goal (done))
+)

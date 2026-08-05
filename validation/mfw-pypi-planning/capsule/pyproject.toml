@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mfw-pypi-planner"
+version = "0.1.0"
+description = "Receipted PyPI planning-engine bridge for MFW"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Sean Chatman" }]
+dependencies = ["unified-planning==1.3.0"]
+
+[project.optional-dependencies]
+pyperplan = ["unified-planning[pyperplan]==1.3.0"]
+tamer = ["unified-planning[tamer]==1.3.0"]
+enhsp = ["unified-planning[enhsp]==1.3.0"]
+fast-downward = ["unified-planning[fast-downward]==1.3.0"]
+lpg = ["unified-planning[lpg]==1.3.0"]
+fmap = ["unified-planning[fmap]==1.3.0"]
+aries = ["unified-planning[aries]==1.3.0"]
+symk = ["unified-planning[symk]==1.3.0"]
+engines = ["unified-planning[engines]==1.3.0"]
+tamerlite = ["tamerlite==0.1.0"]
+paraspace = ["up-paraspace==0.0.12"]
+community = ["tamerlite==0.1.0", "up-paraspace==0.0.12"]
+tamp = ["up-spiderplan==0.6.4"]
+all = [
+  "unified-planning[engines]==1.3.0",
+  "tamerlite==0.1.0",
+  "up-paraspace==0.0.12",
+  "up-spiderplan==0.6.4",
+]
+
+[project.scripts]
+mfw-pypi-planner = "mfw_pypi_planner.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
