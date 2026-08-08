@@ -1,0 +1,39 @@
+{
+  "schema": "urn:mfw:pypi-planner-validation-capsule:v2",
+  "source_repository": "seanchatmangpt/mfw",
+  "source_head_sha": "5e9b3c41c1f4aa6de9522828716ffe41e70b760b",
+  "source_tree_sha": "6adb0f95b867d50fa6199e5516f06dfbb677cefc",
+  "canonical_path": "tools/mfw-pypi-planner",
+  "projection_path": "validation/mfw-pypi-planning/capsule",
+  "purpose": "Independent public-runner validation projection; not a canonical editing surface",
+  "files": {
+    "pyproject.toml": {
+      "git_blob_sha1": "85e9b215e86184978102ea327eb7c5c41853a511",
+      "sha256": "3cfca62c0f9ad88f67ec1a19ffcf0784125148fce4fb34f494dbe381490c8a24"
+    },
+    "src/mfw_pypi_planner/__init__.py": {
+      "git_blob_sha1": "6348f650dc82dd0cf682cd009ae375c4fcd75ec4",
+      "sha256": "8c8d0e3cb94e9c7bbe3be1a1d768ef14f61eeb0f353729f696b6c341917c3551"
+    },
+    "src/mfw_pypi_planner/bridge.py": {
+      "git_blob_sha1": "4ac2c1ee628b0059157c949ee8925ea7054daf31",
+      "sha256": "9985a2949cc48f76bf31b46aae240ecc3ecb912866ffbd61ff5799225d235dbe"
+    },
+    "src/mfw_pypi_planner/cli.py": {
+      "git_blob_sha1": "9b6fa696f835743b73b494a15012c1880b924726",
+      "sha256": "f1ecc62274e879a370eb3e8f21ebe6f5d34133ecabb38dac0bca035fef4eef5b"
+    },
+    "tests/fixtures/domain.pddl": {
+      "git_blob_sha1": "63083f9701f78a85b7fac77e926d3f65d3ef57b6",
+      "sha256": "03dd0163c18d6f0d3ebd82b35468305b338284f235a556d2b35e4ba3bd14dab7"
+    },
+    "tests/fixtures/problem.pddl": {
+      "git_blob_sha1": "d46ed121847ea7f1d994b15b27cc29cb737e665c",
+      "sha256": "7f6277bfdc7956c1ecf33075d5a3bf3dfe1d16006039e6f49303ab80855f4b3c"
+    },
+    "tests/test_bridge.py": {
+      "git_blob_sha1": "69e10351b6d33f1ae9089fc482a5738807a02978",
+      "sha256": "7909632e136cd52bdcb84cbb1caa70991b0afdaaa75838baec18d6823e90f973"
+    }
+  }
+}
