@@ -5,3 +5,4 @@ streamlit
 networkx
 shapely
 pandas>=2.2.0
+SpiffWorkflow==3.1.2
