@@ -1,5 +1,5 @@
 from multiprocessing import Manager, Pool
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from pm4py.algo.discovery.inductive.cuts.abc import Cut, T
 
@@ -36,7 +36,7 @@ from powl.discovery.total_order_based.inductive.fall_through.tau_loop import (
 )
 from powl.discovery.total_order_based.inductive.modeling import InductiveModel
 
-S = TypeVar("S", bound=FallThrough | Cut)
+S = TypeVar("S", bound=Union[FallThrough, Cut])
 
 
 class FallThroughFactory:
