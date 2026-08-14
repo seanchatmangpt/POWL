@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
+import threading
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Protocol, Tuple
@@ -58,14 +58,14 @@ class InMemoryRunStore:
     """Atomic reference store. Production adapters can back this protocol with SQL/KV storage."""
 
     def __init__(self) -> None:
-        self._lock = asyncio.Lock()
+        self._lock = threading.RLock()
         self._bindings: Dict[str, RunBinding] = {}
         self._runs: Dict[str, RunReceipt] = {}
         self._steps: Dict[Tuple[str, str], StepReceipt] = {}
         self._leases: Dict[Tuple[str, str], _Lease] = {}
 
     async def bind_run(self, binding: RunBinding) -> BindResult:
-        async with self._lock:
+        with self._lock:
             existing = self._bindings.get(binding.run_id)
             if existing is None:
                 self._bindings[binding.run_id] = binding
@@ -75,15 +75,15 @@ class InMemoryRunStore:
             return BindResult(BindState.EXISTING, existing, self._runs.get(binding.run_id))
 
     async def load_run(self, run_id: str) -> Optional[RunReceipt]:
-        async with self._lock:
+        with self._lock:
             return self._runs.get(run_id)
 
     async def save_run(self, receipt: RunReceipt) -> None:
-        async with self._lock:
+        with self._lock:
             self._runs[receipt.run_id] = receipt
 
     async def load_step(self, run_id: str, step_id: str) -> Optional[StepReceipt]:
-        async with self._lock:
+        with self._lock:
             return self._steps.get((run_id, step_id))
 
     async def claim_step(
@@ -95,7 +95,7 @@ class InMemoryRunStore:
     ) -> ClaimResult:
         key = (run_id, step_id)
         now = time.monotonic()
-        async with self._lock:
+        with self._lock:
             completed = self._steps.get(key)
             if completed is not None:
                 return ClaimResult(ClaimState.COMPLETED, completed)
@@ -130,7 +130,7 @@ class InMemoryRunStore:
 
     async def save_step(self, receipt: StepReceipt, owner: str) -> None:
         key = (receipt.run_id, receipt.step_id)
-        async with self._lock:
+        with self._lock:
             lease = self._leases.get(key)
             if lease is None:
                 raise RuntimeError("step claim is not held")
@@ -140,6 +140,6 @@ class InMemoryRunStore:
             self._leases.pop(key, None)
 
     async def list_steps(self, run_id: str) -> List[StepReceipt]:
-        async with self._lock:
+        with self._lock:
             receipts = [receipt for (rid, _), receipt in self._steps.items() if rid == run_id]
         return sorted(receipts, key=lambda item: item.step_id)
