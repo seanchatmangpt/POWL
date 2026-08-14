@@ -86,6 +86,7 @@ Runtime guarantees:
 - zero unreceipted retry: actuator exceptions and timeouts block the run because external consequence is unknown;
 - retries only after an actuator returns a persisted `BLOCKED` receipt marked `retryable=True`;
 - run and step replay through a `RunStore`, including lease-aware step claims for distributed workers;
+- expired claims are sealed `BLOCKED` and fence stale workers instead of re-actuating unknown consequences;
 - typed `REFUSED`, `BLOCKED`, `BUILD_BROKEN`, `UNSUPPORTED`, and `ALIVE` standing.
 
 `InMemoryRunStore` is the single-process reference implementation. Multi-worker deployments should implement the `RunStore` protocol over a transactional database or strongly consistent key/value store so `bind_run`, `claim_step`, and `save_step` retain their atomic semantics across processes.
