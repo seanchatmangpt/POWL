@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pm4py.objects.petri_net.obj import Marking, PetriNet
 
 from powl.conversion.utils.pn_reduction import add_arc_from_to
