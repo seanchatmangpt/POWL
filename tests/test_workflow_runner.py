@@ -9,6 +9,8 @@ from powl.runtime import (
     RetryPolicy,
     RunnerConfig,
     Standing,
+    StepKind,
+    StepReceipt,
     TableSelectionPolicy,
     WorkflowRunner,
 )
@@ -170,6 +172,38 @@ def test_abandoned_attempt_claim_blocks_without_reactuation():
     assert receipt.standing == Standing.BLOCKED
     assert "ABANDONED_CLAIM" in receipt.reason
     assert actuator.commands == []
+
+
+def test_abandoned_claim_fences_stale_worker_receipt():
+    async def execute():
+        store = InMemoryRunStore()
+        claim = await store.claim_step("fence", "root/@attempt/1", "dead-worker", 0)
+        assert claim.state.value == "ACQUIRED"
+        sealed = await store.claim_step("fence", "root/@attempt/1", "new-worker", 30)
+        assert sealed.receipt.standing == Standing.BLOCKED
+        stale = StepReceipt(
+            run_id="fence",
+            workflow_id="wf",
+            model_digest="digest",
+            step_id="root/@attempt/1",
+            kind=StepKind.ACTIVITY_ATTEMPT,
+            standing=Standing.ALIVE,
+            attempt=1,
+            started_at=0.0,
+            finished_at=1.0,
+            receipt_id="late-success",
+        )
+        try:
+            await store.save_step(stale, "dead-worker")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("stale worker receipt was not fenced")
+        return await store.load_step("fence", "root/@attempt/1")
+
+    persisted = run(execute())
+    assert persisted.standing == Standing.BLOCKED
+    assert "ABANDONED_CLAIM" in persisted.reason
 
 
 def test_one_runner_is_safe_for_concurrent_independent_runs():
