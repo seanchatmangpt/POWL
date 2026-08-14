@@ -5,6 +5,7 @@ from contextvars import ContextVar
 import hashlib
 import inspect
 import json
+import threading
 import time
 import uuid
 from dataclasses import dataclass, replace
@@ -63,6 +64,30 @@ class _AdmissionError(Exception):
         self.detail = detail
 
 
+class _ProcessLimiter:
+    """Loop-agnostic process-wide async concurrency limiter."""
+
+    def __init__(self, limit: int, poll_seconds: float = 0.001) -> None:
+        self._limit = limit
+        self._poll_seconds = max(0.0001, poll_seconds)
+        self._active = 0
+        self._lock = threading.Lock()
+
+    async def __aenter__(self) -> "_ProcessLimiter":
+        while True:
+            with self._lock:
+                if self._active < self._limit:
+                    self._active += 1
+                    return self
+            await asyncio.sleep(self._poll_seconds)
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        with self._lock:
+            if self._active < 1:
+                raise RuntimeError("actuation limiter released without an active claim")
+            self._active -= 1
+
+
 class WorkflowRunner:
     """Receipted asynchronous executor for the core TaggedPOWL language."""
 
@@ -82,7 +107,10 @@ class WorkflowRunner:
             raise ValueError("max_concurrency must be >= 1")
         if self._config.retry.max_attempts < 1:
             raise ValueError("retry.max_attempts must be >= 1")
-        self._semaphore = asyncio.Semaphore(self._config.max_concurrency)
+        self._actuation_limiter = _ProcessLimiter(
+            self._config.max_concurrency,
+            min(0.01, self._config.claim_poll_seconds),
+        )
         self._context: ContextVar[_RunContext] = ContextVar("powl_runtime_context")
 
     async def run(
@@ -678,7 +706,7 @@ class WorkflowRunner:
                 variables=dict(self._current().variables),
             )
             try:
-                async with self._semaphore:
+                async with self._actuation_limiter:
                     external = await asyncio.wait_for(
                         self._call_actuator(command),
                         timeout=self._config.activity_timeout_seconds,
