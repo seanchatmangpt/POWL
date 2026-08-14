@@ -10,7 +10,7 @@ on:
       - "RESEARCH_ALIGNMENT.md"
       - ".github/workflows/research-contract.yml"
   push:
-    branches: [main]
+    branches: [main, "agent/spiff-powl-concurrency"]
     paths:
       - "powl/**"
       - "tests/**"
