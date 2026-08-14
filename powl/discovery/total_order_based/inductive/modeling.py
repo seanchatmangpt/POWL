@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, TypeAlias
+from typing import Optional, Union
 
 from powl.objects.tagged_powl import Activity, ChoiceGraph, PartialOrder, TaggedPOWL
 from powl.objects.tagged_powl.builders import loop, sequence, xor
@@ -38,10 +38,10 @@ class ChoiceGraphSpec:
     max_freq: Optional[int] = 1
 
 
-InductiveSpec: TypeAlias = (
-    SequenceSpec | XorSpec | LoopSpec | PartialOrderSpec | ChoiceGraphSpec
-)
-InductiveModel: TypeAlias = TaggedPOWL | InductiveSpec
+InductiveSpec = Union[
+    SequenceSpec, XorSpec, LoopSpec, PartialOrderSpec, ChoiceGraphSpec
+]
+InductiveModel = Union[TaggedPOWL, InductiveSpec]
 
 
 def build_model(spec: InductiveModel, children: list[TaggedPOWL]) -> TaggedPOWL:

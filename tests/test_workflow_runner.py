@@ -215,6 +215,23 @@ def test_abandoned_claim_fences_stale_worker_receipt():
     assert "ABANDONED_CLAIM" in persisted.reason
 
 
+def test_shared_store_deduplicates_same_run_across_runner_instances():
+    store = InMemoryRunStore()
+    actuator = RecordingActuator(delay=0.02)
+    model = activity("A")
+
+    async def execute():
+        runners = [WorkflowRunner(actuator, store=store) for _ in range(8)]
+        return await asyncio.gather(
+            *(runner.run(model, run_id="shared", workflow_id="wf") for runner in runners)
+        )
+
+    receipts = run(execute())
+    assert all(receipt.standing == Standing.ALIVE for receipt in receipts)
+    assert len(actuator.commands) == 1
+    assert len({receipt.receipt_digest for receipt in receipts}) == 1
+
+
 def test_one_runner_is_safe_for_concurrent_independent_runs():
     actuator = RecordingActuator(delay=0.02)
     runner = WorkflowRunner(actuator)
