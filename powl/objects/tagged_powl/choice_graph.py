@@ -14,13 +14,13 @@ from ..utils.graph_sequentialization import split_graph_into_stages
 
 
 # Internal nodes (not TaggedPOWL; users shouldn't ever touch them)
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class _ChoiceGraphStart:
     def __repr__(self) -> str:
         return "_ChoiceGraphStart()"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class _ChoiceGraphEnd:
     def __repr__(self) -> str:
         return "_ChoiceGraphEnd()"

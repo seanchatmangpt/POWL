@@ -46,6 +46,15 @@ def run(coro):
     return asyncio.run(coro)
 
 
+def test_activity_lease_must_outlive_activity_timeout():
+    try:
+        RunnerConfig(activity_timeout_seconds=1, claim_lease_seconds=1)
+    except ValueError as exc:
+        assert "claim_lease_seconds" in str(exc)
+    else:
+        raise AssertionError("unsafe lease/timeout configuration was admitted")
+
+
 def test_admission_refuses_unstable_composite_child_identity():
     a = activity("A")
     b = activity("B")
