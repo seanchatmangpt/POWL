@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Protocol, Tuple
@@ -12,6 +13,8 @@ from .contracts import (
     ClaimState,
     RunBinding,
     RunReceipt,
+    Standing,
+    StepKind,
     StepReceipt,
 )
 
@@ -97,8 +100,31 @@ class InMemoryRunStore:
             if completed is not None:
                 return ClaimResult(ClaimState.COMPLETED, completed)
             lease = self._leases.get(key)
-            if lease is not None and lease.expires_at > now and lease.owner != owner:
-                return ClaimResult(ClaimState.BUSY)
+            if lease is not None and lease.owner != owner:
+                if lease.expires_at > now:
+                    return ClaimResult(ClaimState.BUSY)
+                binding = self._bindings.get(run_id)
+                material = "%s|%s|ABANDONED_CLAIM" % (run_id, step_id)
+                digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
+                receipt = StepReceipt(
+                    run_id=run_id,
+                    workflow_id=binding.workflow_id if binding else "",
+                    model_digest=binding.model_digest if binding else "",
+                    step_id=step_id,
+                    kind=StepKind.DIAGNOSTIC,
+                    standing=Standing.BLOCKED,
+                    attempt=0,
+                    started_at=time.time(),
+                    finished_at=time.time(),
+                    receipt_id="powl:%s" % digest,
+                    reason=(
+                        "ABANDONED_CLAIM: previous worker lease expired without a persisted "
+                        "receipt; external consequence is unknown and the step will not be re-actuated"
+                    ),
+                )
+                self._steps[key] = receipt
+                self._leases.pop(key, None)
+                return ClaimResult(ClaimState.COMPLETED, receipt)
             self._leases[key] = _Lease(owner=owner, expires_at=now + lease_seconds)
             return ClaimResult(ClaimState.ACQUIRED)
 

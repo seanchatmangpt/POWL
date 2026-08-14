@@ -155,6 +155,23 @@ def test_run_id_cannot_be_rebound_to_different_subject():
     assert len(actuator.commands) == 1
 
 
+def test_abandoned_attempt_claim_blocks_without_reactuation():
+    async def execute():
+        store = InMemoryRunStore()
+        claim = await store.claim_step("crash", "root/@attempt/1", "dead-worker", 0)
+        assert claim.state.value == "ACQUIRED"
+        actuator = RecordingActuator()
+        receipt = await WorkflowRunner(actuator, store=store).run(
+            activity("A"), run_id="crash", workflow_id="wf"
+        )
+        return receipt, actuator
+
+    receipt, actuator = run(execute())
+    assert receipt.standing == Standing.BLOCKED
+    assert "ABANDONED_CLAIM" in receipt.reason
+    assert actuator.commands == []
+
+
 def test_one_runner_is_safe_for_concurrent_independent_runs():
     actuator = RecordingActuator(delay=0.02)
     runner = WorkflowRunner(actuator)
