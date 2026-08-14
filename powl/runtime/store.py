@@ -132,7 +132,9 @@ class InMemoryRunStore:
         key = (receipt.run_id, receipt.step_id)
         async with self._lock:
             lease = self._leases.get(key)
-            if lease is not None and lease.owner != owner and lease.expires_at > time.monotonic():
+            if lease is None:
+                raise RuntimeError("step claim is not held")
+            if lease.owner != owner:
                 raise RuntimeError("step lease is owned by another runner")
             self._steps[key] = receipt
             self._leases.pop(key, None)
