@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import pandas as pd
@@ -251,10 +253,8 @@ def save_visualization_net(powl: TaggedPOWL, file_path: str, use_frequency_tags=
 
 def convert_to_petri_net(powl: TaggedPOWL):
     return powl_converter(powl)
-
 def convert_from_workflow_net(net: PetriNet) -> TaggedPOWL:
     return convert_workflow_net_to_powl(net)
-
 def convert_to_bpmn(powl: TaggedPOWL):
     bpmn, _, _ = to_bpmn(powl)
     bpmn = bpmn_layouter.apply(bpmn)
