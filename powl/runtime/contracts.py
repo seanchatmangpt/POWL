@@ -52,6 +52,12 @@ class RetryPolicy:
     base_delay_seconds: float = 0.05
     max_delay_seconds: float = 1.0
 
+    def __post_init__(self) -> None:
+        if self.max_attempts < 1:
+            raise ValueError("max_attempts must be >= 1")
+        if self.base_delay_seconds < 0 or self.max_delay_seconds < 0:
+            raise ValueError("retry delays must be >= 0")
+
     def delay_for(self, attempt: int) -> float:
         if attempt < 1:
             return 0.0
@@ -62,7 +68,7 @@ class RetryPolicy:
 class RunnerConfig:
     max_concurrency: int = 64
     activity_timeout_seconds: float = 300.0
-    claim_lease_seconds: float = 60.0
+    claim_lease_seconds: float = 360.0
     claim_poll_seconds: float = 0.05
     claim_wait_seconds: float = 30.0
     max_choice_steps: int = 10000
@@ -70,6 +76,24 @@ class RunnerConfig:
     max_model_nodes: int = 100000
     require_stable_ids: bool = True
     retry: RetryPolicy = field(default_factory=RetryPolicy)
+
+    def __post_init__(self) -> None:
+        if self.max_concurrency < 1:
+            raise ValueError("max_concurrency must be >= 1")
+        if self.activity_timeout_seconds <= 0:
+            raise ValueError("activity_timeout_seconds must be > 0")
+        if self.claim_lease_seconds <= self.activity_timeout_seconds:
+            raise ValueError("claim_lease_seconds must be greater than activity_timeout_seconds")
+        if self.claim_poll_seconds <= 0:
+            raise ValueError("claim_poll_seconds must be > 0")
+        if self.claim_wait_seconds < 0:
+            raise ValueError("claim_wait_seconds must be >= 0")
+        if self.max_choice_steps < 1:
+            raise ValueError("max_choice_steps must be >= 1")
+        if self.max_repetitions < 0:
+            raise ValueError("max_repetitions must be >= 0")
+        if self.max_model_nodes < 1:
+            raise ValueError("max_model_nodes must be >= 1")
 
 
 @dataclass(frozen=True)
