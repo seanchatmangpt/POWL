@@ -179,9 +179,8 @@ def test_togaf_plan_executes_independent_architecture_work_concurrently():
         "Technology",
         "Solutions",
     }
-    solutions = receipt.for_activity(plan.activities["solutions"])
-    assert len(solutions) == 1
-    solution_start = solutions[0].started_ns
+    solution = receipt.for_activity(plan.activities["solutions"])
+    solution_start = solution.started_ns
     for package_id in ("business", "data", "technology"):
-        execution = receipt.for_activity(plan.activities[package_id])[0]
+        execution = receipt.for_activity(plan.activities[package_id])
         assert execution.finished_ns <= solution_start
