@@ -1,4 +1,5 @@
 from powl.main import (
+    check_workflow_net_is_separable,
     convert_from_workflow_net,
     convert_to_bpmn,
     convert_to_petri_net,

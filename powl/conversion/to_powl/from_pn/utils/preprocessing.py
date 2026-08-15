@@ -134,7 +134,22 @@ def preprocess(net):
         common_pre = pre1 & pre2
         common_post = post1 & post2
 
-        if pre1 == pre2 and len(common_post) > 0:
+        # An AND-split transition t in the shared preset that already produces
+        # tokens in BOTH p1 and p2 on every firing means p1/p2 are not XOR
+        # alternatives -- merging them into a silent-choice place would be
+        # unsound (it would collapse real concurrency into exclusive choice).
+        pre1_is_and_split_into_both = pre1 == pre2 and any(
+            p1 in pn_util.post_set(t) and p2 in pn_util.post_set(t) for t in pre1
+        )
+
+        # Symmetric case: an AND-join transition t in the shared postset that
+        # already requires tokens from BOTH p1 and p2 means p1/p2 are not XOR
+        # alternatives to merge -- merging would be unsound in the dual sense.
+        post1_is_and_join_from_both = post1 == post2 and any(
+            p1 in pn_util.pre_set(t) and p2 in pn_util.pre_set(t) for t in post1
+        )
+
+        if pre1 == pre2 and len(common_post) > 0 and not pre1_is_and_split_into_both:
 
             new_place = PetriNet.Place(f"place_{next(id_generator())}")
             net.places.add(new_place)
@@ -161,7 +176,7 @@ def preprocess(net):
             add_arc_from_to(new_silent, p2, net)
             return preprocess(net)
 
-        elif post1 == post2 and len(common_pre) > 0:
+        elif post1 == post2 and len(common_pre) > 0 and not post1_is_and_join_from_both:
 
             new_place = PetriNet.Place(f"place_{next(id_generator())}")
             net.places.add(new_place)
