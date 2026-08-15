@@ -9,7 +9,10 @@ from pm4py.objects.ocel.obj import OCEL
 from pm4py.utils import get_properties
 
 from powl.conversion.converter import apply as powl_converter
-from powl.conversion.to_powl.from_pn.converter import convert_workflow_net_to_powl
+from powl.conversion.to_powl.from_pn.converter import (
+    convert_workflow_net_to_powl,
+    is_separable,
+)
 from powl.conversion.variants.to_bpmn import apply as to_bpmn
 from powl.discovery.dfg_based.algorithm import apply as dfg_discovery
 from powl.discovery.object_centric.algorithm import apply as oc_discovery
@@ -254,6 +257,9 @@ def convert_to_petri_net(powl: TaggedPOWL):
 
 def convert_from_workflow_net(net: PetriNet) -> TaggedPOWL:
     return convert_workflow_net_to_powl(net)
+
+def check_workflow_net_is_separable(net: PetriNet) -> tuple[bool, str]:
+    return is_separable(net)
 
 def convert_to_bpmn(powl: TaggedPOWL):
     bpmn, _, _ = to_bpmn(powl)

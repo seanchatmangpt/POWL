@@ -22,6 +22,48 @@ from powl.objects.tagged_powl.choice_graph import ChoiceGraph
 from powl.objects.tagged_powl.partial_order import PartialOrder
 
 
+def is_separable(net: PetriNet) -> tuple[bool, str]:
+    """
+    Check whether a WF-net is separable, per the paper's own completeness
+    result for this conversion algorithm.
+
+    H. Kourani et al., "Hierarchical Decomposition of Separable
+    Workflow-Nets", Sections 4/5: the paper states that its translation
+    algorithm is *complete* for the class of separable WF-nets (Def. 3.13),
+    meaning it succeeds if and only if the input WF-net is separable.
+
+    This function relies entirely on that stated completeness result: it
+    attempts ``convert_workflow_net_to_powl(net)`` and returns ``(True, "")``
+    on success, or ``(False, <the real exception message>)`` on any raised
+    exception.
+
+    IMPORTANT - what this function does NOT do:
+    it does not independently re-verify separability (Definition 3.13), and
+    it does not check any of the structural properties the paper proves are
+    necessary for separable nets (free-choiceness, absence of PT-handles and
+    TP-handles). It defers entirely to the converter's own success/failure.
+    A "True" result means "this converter, as currently implemented,
+    produced a POWL 2.0 model for this net" -- not an independently-checked
+    proof that the net satisfies Definition 3.13. Likewise, a "False" result
+    reports whatever exception the converter actually raised; it is not a
+    claim, independent of that exception, that the net fails Definition
+    3.13. This is a deliberate, documented reliance on the paper's iff
+    theorem, not a from-scratch separability checker.
+
+    Parameters:
+    - net: PetriNet
+
+    Returns:
+    - (True, "") if convert_workflow_net_to_powl(net) succeeds.
+    - (False, <exception message>) if it raises.
+    """
+    try:
+        convert_workflow_net_to_powl(net)
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+
 def convert_workflow_net_to_powl(net: PetriNet) -> TaggedPOWL:
     """
     Convert a Petri net to a POWL model.

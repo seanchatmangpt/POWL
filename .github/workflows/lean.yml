@@ -1,0 +1,68 @@
+name: Lean
+
+on:
+  push:
+    paths:
+      - "**/*.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/lean.yml"
+  pull_request:
+    paths:
+      - "**/*.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/lean.yml"
+
+concurrency:
+  group: lean-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          show-progress: false
+
+      - name: Install elan and pinned Lean
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none --no-modify-path
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" toolchain install "$(cat lean-toolchain)"
+          "$HOME/.elan/bin/lean" --version
+          "$HOME/.elan/bin/lake" --version
+
+      - name: Resolve dependencies and build
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            lake update
+            lake exe cache get
+            lake build --wfail
+          } 2>&1 | tee lean-build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lean-build-log
+          path: lean-build.log
+          if-no-files-found: error
+
+      - name: Enforce kernel build
+        if: steps.build.outcome != 'success'
+        run: exit 1
+
+      - name: Run formalization receipt
+        run: lake env lean --run Main.lean

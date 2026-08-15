@@ -1,4 +1,5 @@
 from powl.main import (
+    check_workflow_net_is_separable,
     convert_from_workflow_net,
     convert_to_bpmn,
     convert_to_petri_net,
@@ -13,6 +14,13 @@ from powl.main import (
     save_visualization_net,
     view,
     view_net,
+)
+from powl.execution import (
+    ExecutionRefusal,
+    ExecutionStep,
+    Marking,
+    replay,
+    replay_concurrent,
 )
 from powl.io.powl_json import read_powl_json, write_powl_json
 
