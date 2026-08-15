@@ -14,6 +14,12 @@ from powl.main import (
     view,
     view_net,
 )
+from powl.execution import (
+    ExecutionRefusal,
+    ExecutionStep,
+    Marking,
+    replay,
+)
 from powl.io.powl_json import read_powl_json, write_powl_json
 
 __name__ = "powl"

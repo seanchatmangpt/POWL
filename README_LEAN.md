@@ -65,4 +65,11 @@ The next proof sequence is:
 4. workflow-net-to-POWL preservation and separable-net completeness;
 5. inductive-miner soundness by base case, cut, filter, fall-through, and recursion;
 6. choice-graph SCC and sequentialization preservation;
-7. object-centric projection correctness.
+7. object-centric projection correctness;
+8. execution-semantics soundness for `powl.execution` (`Marking`/`enabled`/
+   `fire`/`replay`): a real replay never fires a node whose `min_freq`/
+   `max_freq` budget is exhausted, never fires a `ChoiceGraph` successor a
+   `Chooser` was not actually offered, and reaches a real final state only
+   when every active node's `min_freq` has been met. Named here per this
+   file's own discipline; not discharged yet, matching the standing of
+   items 1-7.
