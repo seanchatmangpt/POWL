@@ -19,6 +19,7 @@ from powl.execution import (
     ExecutionStep,
     Marking,
     replay,
+    replay_concurrent,
 )
 from powl.io.powl_json import read_powl_json, write_powl_json
 

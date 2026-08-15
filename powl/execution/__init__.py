@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .conformance import ConformanceResult, check_conformance
 from .engine import (
     Chooser,
     ExecutionRefusal,
@@ -10,16 +11,22 @@ from .engine import (
     enabled,
     is_final,
     replay,
+    replay_concurrent,
 )
 from .marking import Marking
+from .refusals import PowlRefusal
 
 __all__ = [
     "Chooser",
+    "ConformanceResult",
     "ExecutionRefusal",
     "ExecutionStep",
     "Marking",
+    "PowlRefusal",
     "RepeatDecider",
+    "check_conformance",
     "enabled",
     "is_final",
     "replay",
+    "replay_concurrent",
 ]
