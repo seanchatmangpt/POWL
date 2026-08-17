@@ -1,0 +1,14 @@
+[package]
+name = "mfw-cmca-court"
+version = "0.0.0-validation"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+mfw-auto-select = { path = "../mfw-auto-select" }
+mfw-cmca-bridge = { path = "../mfw-cmca-bridge" }
+
+[lints]
+workspace = true

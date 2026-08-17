@@ -1,0 +1,12 @@
+[workspace]
+members = ["mfw-auto-select", "mfw-cmca-bridge", "court"]
+resolver = "2"
+
+[workspace.package]
+version = "26.9.1"
+edition = "2021"
+rust-version = "1.82"
+license = "AGPL-3.0-or-later"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
