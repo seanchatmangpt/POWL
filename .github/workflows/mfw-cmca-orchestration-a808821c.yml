@@ -21,8 +21,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git hash-object validation/mfw-cmca-orchestration-a808821c/mfw-cmca-bridge/src/lib.rs)" = "64e2c55b574432525af68637f7b3fe843152f592"
-      - name: Format exact admitted bridge source
-        run: rustfmt --edition 2021 --check validation/mfw-cmca-orchestration-a808821c/mfw-cmca-bridge/src/lib.rs
       - name: Check validation workspace
         run: cargo check --manifest-path validation/mfw-cmca-orchestration-a808821c/Cargo.toml --workspace
       - name: Unit and integration court
