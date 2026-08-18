@@ -1,0 +1,40 @@
+name: mfw-cmca-orchestration-a808821c
+
+on:
+  pull_request:
+    paths:
+      - 'validation/mfw-cmca-orchestration-a808821c/**'
+      - '.github/workflows/mfw-cmca-orchestration-a808821c.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-bridge-court:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin Rust 1.82
+        run: rustup toolchain install 1.82.0 --profile minimal && rustup default 1.82.0
+      - name: Admit exact MFW bridge blob
+        run: |
+          set -euo pipefail
+          test "$(git hash-object validation/mfw-cmca-orchestration-a808821c/mfw-cmca-bridge/src/lib.rs)" = "64e2c55b574432525af68637f7b3fe843152f592"
+      - name: Check validation workspace
+        run: cargo check --manifest-path validation/mfw-cmca-orchestration-a808821c/Cargo.toml --workspace
+      - name: Unit and integration court
+        run: cargo test --manifest-path validation/mfw-cmca-orchestration-a808821c/Cargo.toml --workspace
+      - name: Deterministic consequence receipt and replay
+        run: |
+          set -euo pipefail
+          cargo run --quiet --manifest-path validation/mfw-cmca-orchestration-a808821c/Cargo.toml -p mfw-cmca-court > /tmp/receipt-1.txt
+          cargo run --quiet --manifest-path validation/mfw-cmca-orchestration-a808821c/Cargo.toml -p mfw-cmca-court > /tmp/receipt-2.txt
+          cmp /tmp/receipt-1.txt /tmp/receipt-2.txt
+          cat /tmp/receipt-1.txt
+      - name: Falsify source substitution
+        run: |
+          set -euo pipefail
+          cp validation/mfw-cmca-orchestration-a808821c/mfw-cmca-bridge/src/lib.rs /tmp/mutant.rs
+          printf '\n// mutant\n' >> /tmp/mutant.rs
+          test "$(git hash-object /tmp/mutant.rs)" != "64e2c55b574432525af68637f7b3fe843152f592"

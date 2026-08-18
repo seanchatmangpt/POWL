@@ -1,0 +1,10 @@
+[package]
+name = "mfw-auto-select"
+version = "0.0.0-validation"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
