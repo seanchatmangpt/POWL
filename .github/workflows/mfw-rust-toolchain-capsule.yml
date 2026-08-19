@@ -1,0 +1,48 @@
+name: MFW pinned Rust toolchain capsule
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/mfw-rust-toolchain-capsule.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manufacture-toolchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact MFW Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install nightly-2026-06-22 --profile minimal --component rustfmt --component clippy
+          rustup run nightly-2026-06-22 rustc -Vv
+          rustup run nightly-2026-06-22 cargo -V
+      - name: Manufacture portable toolchain capsule
+        shell: bash
+        run: |
+          set -euo pipefail
+          sysroot="$(rustup run nightly-2026-06-22 rustc --print sysroot)"
+          parent="$(dirname "$sysroot")"
+          leaf="$(basename "$sysroot")"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -C "$parent" -czf /tmp/rust-nightly-2026-06-22-x86_64-unknown-linux-gnu.tar.gz "$leaf"
+          sha256sum /tmp/rust-nightly-2026-06-22-x86_64-unknown-linux-gnu.tar.gz | tee /tmp/toolchain.sha256
+          rustup run nightly-2026-06-22 rustc -Vv > /tmp/rustc-version.txt
+          rustup run nightly-2026-06-22 cargo -V > /tmp/cargo-version.txt
+      - name: Upload toolchain capsule
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfw-rust-nightly-2026-06-22-x86_64-linux
+          path: |
+            /tmp/rust-nightly-2026-06-22-x86_64-unknown-linux-gnu.tar.gz
+            /tmp/toolchain.sha256
+            /tmp/rustc-version.txt
+            /tmp/cargo-version.txt
+          if-no-files-found: error
+          retention-days: 1
