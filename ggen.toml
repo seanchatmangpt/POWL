@@ -1,0 +1,62 @@
+[project]
+name = "powl"
+version = "26.8.26"
+description = "GGEN manufacturing contract for POWL process discovery and receipted runtime capabilities"
+
+[ontology]
+source = "ontology/ggen-runtime-capabilities.ttl"
+base_iri = "https://powl.dev/ontology/ggen-runtime#"
+
+[ontology.prefixes]
+powl = "https://powl.dev/ontology/ggen-runtime#"
+skos = "http://www.w3.org/2004/02/skos/core#"
+dcterms = "http://purl.org/dc/terms/"
+prov = "http://www.w3.org/ns/prov#"
+
+[inference]
+
+[[inference.rules]]
+name = "powl-runtime-capability-projection"
+construct = """
+PREFIX powl: <https://powl.dev/ontology/ggen-runtime#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+CONSTRUCT {
+  ?cap a skos:Concept ;
+       skos:prefLabel ?label ;
+       dcterms:description ?description ;
+       powl:surface ?surface ;
+       powl:authority ?authority .
+}
+WHERE {
+  ?cap a skos:Concept ;
+       skos:prefLabel ?label ;
+       dcterms:description ?description ;
+       powl:surface ?surface ;
+       powl:authority ?authority .
+}
+ORDER BY ?label
+"""
+
+[generation]
+output_dir = "."
+
+[[generation.rules]]
+name = "powl-runtime-capabilities-reference"
+query = { inline = """
+PREFIX powl: <https://powl.dev/ontology/ggen-runtime#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?label ?description ?surface ?authority
+WHERE {
+  ?cap a skos:Concept ;
+       skos:prefLabel ?label ;
+       dcterms:description ?description ;
+       powl:surface ?surface ;
+       powl:authority ?authority .
+}
+ORDER BY ?label
+""" }
+template = { file = "templates/ggen-runtime-capabilities.md.tera" }
+output_file = "docs/reference/ggen-runtime-capabilities.md"
+mode = "Overwrite"
