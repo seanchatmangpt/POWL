@@ -1,0 +1,14 @@
+# POWL GGEN Runtime Capabilities
+
+Generated from `ontology/ggen-runtime-capabilities.ttl`.
+
+{% for row in rows %}
+## {{ row.label }}
+
+- **Surface:** {{ row.surface }}
+- **Authority:** {{ row.authority }}
+- **Meaning:** {{ row.description }}
+
+{% endfor %}
+
+Generated output is a projection. Edit the ontology or template, never the generated reference.
