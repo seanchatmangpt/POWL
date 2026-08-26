@@ -1,0 +1,59 @@
+name: R88 GGEN POWL Consumer
+
+on:
+  push:
+    branches:
+      - "fanout/r88-ggen-powl-runtime"
+  pull_request:
+    paths:
+      - "ggen.toml"
+      - "ontology/ggen-runtime-capabilities.ttl"
+      - "templates/ggen-runtime-capabilities.md.tera"
+      - ".github/workflows/r88-ggen-consumer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manufacture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact consumer subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SUBJECT_SHA }}
+          persist-credentials: false
+
+      - name: Admit exact runtime source
+        run: |
+          test "$(git rev-parse HEAD)" = "${SUBJECT_SHA}"
+          test -s powl/__init__.py
+          test -s app_po_based_discovery.py
+
+      - name: Resolve exact GGEN producer
+        run: |
+          git clone --filter=blob:none https://github.com/seanchatmangpt/ggen.git "$RUNNER_TEMP/ggen"
+          git -C "$RUNNER_TEMP/ggen" checkout --detach ddfa602bfbab57b7ed5150f61b0acac7a41e3020
+          test "$(git -C "$RUNNER_TEMP/ggen" rev-parse HEAD)" = "ddfa602bfbab57b7ed5150f61b0acac7a41e3020"
+
+      - name: Admit canonical GGEN Rust toolchain
+        run: rustup toolchain install nightly --profile minimal
+
+      - name: Manufacture through canonical GGEN
+        run: cargo +nightly run --manifest-path "$RUNNER_TEMP/ggen/Cargo.toml" -p ggen-cli-lib --bin ggen -- sync run
+
+      - name: Qualify generated consequence and receipt
+        run: |
+          test -s docs/reference/ggen-runtime-capabilities.md
+          grep -q 'Receipted workflow runtime' docs/reference/ggen-runtime-capabilities.md
+          grep -q 'Bounded partial-order fanout' docs/reference/ggen-runtime-capabilities.md
+          test -s .ggen-v2/receipt.json
+
+      - name: Preserve authority fence
+        run: |
+          grep -Eq '(CONSTRUCT_ONLY|VERIFY_ONLY|BRCE_BOUNDARY)' ontology/ggen-runtime-capabilities.ttl
+          ! grep -R --line-number -E '(kubectl|terraform apply|pip publish|twine upload)' ggen.toml ontology/ggen-runtime-capabilities.ttl templates/ggen-runtime-capabilities.md.tera

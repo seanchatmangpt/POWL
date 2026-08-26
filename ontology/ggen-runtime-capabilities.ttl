@@ -1,0 +1,32 @@
+@prefix powl: <https://powl.dev/ontology/ggen-runtime#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+powl:process-discovery a skos:Concept ;
+  skos:prefLabel "POWL process discovery" ;
+  dcterms:description "Process discovery from event logs into POWL 2.0 models with BPMN and PNML export surfaces." ;
+  powl:surface "discovery|bpmn|pnml" ;
+  powl:authority "CONSTRUCT_ONLY" ;
+  prov:wasDerivedFrom <https://github.com/seanchatmangpt/POWL/blob/56b9d36ecd5a6ad78ac8264547446e60022135bd/README.md> .
+
+powl:receipted-runtime a skos:Concept ;
+  skos:prefLabel "Receipted workflow runtime" ;
+  dcterms:description "WorkflowRunner separates selection from actuation and requires observable activities to cross a receipt-producing actuator boundary." ;
+  powl:surface "runtime|receipt|replay" ;
+  powl:authority "BRCE_BOUNDARY" .
+
+powl:partial-order-fanout a skos:Concept ;
+  skos:prefLabel "Bounded partial-order fanout" ;
+  dcterms:description "Bounded asynchronous fanout for partial orders while preserving predecessor barriers and stable step identity." ;
+  powl:surface "partial-order|concurrency" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:typed-standing a skos:Concept ;
+  skos:prefLabel "Typed workflow standing" ;
+  dcterms:description "Runtime distinguishes REFUSED, BLOCKED, BUILD_BROKEN, UNSUPPORTED and ALIVE without ambient authority." ;
+  powl:surface "standing|evidence" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:surface a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
+powl:authority a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
