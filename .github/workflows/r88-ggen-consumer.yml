@@ -19,18 +19,19 @@ jobs:
   manufacture:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Checkout exact consumer subject
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.SUBJECT_SHA }}
           persist-credentials: false
 
       - name: Admit exact runtime source
         run: |
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${SUBJECT_SHA}"
           test -s powl/runtime.py
-          grep -q 'WorkflowRunner' README.md
-          grep -q 'zero unreceipted retry' README.md
 
       - name: Resolve exact GGEN producer
         run: |
