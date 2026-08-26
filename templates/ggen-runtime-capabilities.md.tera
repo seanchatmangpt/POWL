@@ -2,7 +2,7 @@
 
 Generated from `ontology/ggen-runtime-capabilities.ttl`.
 
-{% for row in rows %}
+{% for row in results %}
 ## {{ row.label }}
 
 - **Surface:** {{ row.surface }}
