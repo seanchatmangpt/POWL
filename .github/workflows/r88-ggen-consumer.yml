@@ -31,7 +31,8 @@ jobs:
       - name: Admit exact runtime source
         run: |
           test "$(git rev-parse HEAD)" = "${SUBJECT_SHA}"
-          test -s powl/runtime.py
+          test -s powl/__init__.py
+          test -s app_po_based_discovery.py
 
       - name: Resolve exact GGEN producer
         run: |
