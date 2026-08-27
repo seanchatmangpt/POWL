@@ -145,7 +145,7 @@ defmodule PowlPlatform.WorkflowRun do
 
     create :create do
       primary? true
-      accept [:id, :workflow_id, :process_model_id, :model_digest, :policy_iri]
+      accept [:workflow_id, :process_model_id, :model_digest, :policy_iri]
     end
 
     update :record_receipt do
