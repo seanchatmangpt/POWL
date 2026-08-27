@@ -93,11 +93,19 @@ jobs:
           test -s .ggen-v2/receipt.json
           git diff --exit-code -- docs/reference/powl-paas-resource-manifest.md docs/reference/ggen-runtime-capabilities.md
 
-      - name: Emit contract receipt
+      - name: Emit exact-subject contract receipt
         shell: bash
         run: |
           python - <<'PY'
-          import hashlib, json, pathlib, os
+          import hashlib, json, os, pathlib, subprocess
+
+          subject_sha = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip()
+          subject_tree_sha = subprocess.check_output(
+              ["git", "rev-parse", "HEAD^{tree}"], text=True
+          ).strip()
+
           paths = [
               pathlib.Path("ontology/ggen-runtime-capabilities.ttl"),
               pathlib.Path("platform/lib/powl_platform.ex"),
@@ -106,9 +114,12 @@ jobs:
               pathlib.Path(".ggen-v2/receipt.json"),
           ]
           receipt = {
-              "status": "ALIVE",
-              "standing": "exact-head-contract",
-              "subject": os.environ.get("GITHUB_SHA", ""),
+              "protocol": "powl-paas-contract/1",
+              "standing": "ALIVE",
+              "scope": "exact-head-contract",
+              "subject_sha": subject_sha,
+              "subject_tree_sha": subject_tree_sha,
+              "workflow_run_id": os.environ.get("GITHUB_RUN_ID", ""),
               "ash_r2rml_sha": os.environ["ASH_R2RML_SHA"],
               "ggen_sha": os.environ["GGEN_SHA"],
               "execution_mode": "REPLAY_ONLY",
@@ -122,3 +133,14 @@ jobs:
           out.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
           print(out.read_text())
           PY
+
+      - name: Upload receipt DAG and resolved BEAM lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: powl-paas-contract-${{ github.event.pull_request.head.sha || github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            receipts/powl-paas-contract.json
+            .ggen-v2/receipt.json
+            platform/mix.lock
