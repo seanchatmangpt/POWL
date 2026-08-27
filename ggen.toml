@@ -1,7 +1,7 @@
 [project]
 name = "powl"
 version = "26.8.26"
-description = "GGEN manufacturing contract for POWL process discovery and receipted runtime capabilities"
+description = "GGEN manufacturing contract for POWL process discovery, receipted runtime, and Ash/AshR2RML/Reactor PaaS resources"
 
 [ontology]
 source = "ontology/ggen-runtime-capabilities.ttl"
@@ -59,4 +59,25 @@ ORDER BY ?label
 """ }
 template = { file = "templates/ggen-runtime-capabilities.md.tera" }
 output_file = "docs/reference/ggen-runtime-capabilities.md"
+mode = "Overwrite"
+
+[[generation.rules]]
+name = "powl-paas-resource-manifest"
+query = { inline = """
+PREFIX powl: <https://powl.dev/ontology/ggen-runtime#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?class ?label ?description ?module ?table ?authority
+WHERE {
+  ?class a powl:PlatformResource ;
+         skos:prefLabel ?label ;
+         dcterms:description ?description ;
+         powl:ashModule ?module ;
+         powl:tableName ?table ;
+         powl:authority ?authority .
+}
+ORDER BY ?module
+""" }
+template = { file = "templates/powl-paas-resource-manifest.md.tera" }
+output_file = "docs/reference/powl-paas-resource-manifest.md"
 mode = "Overwrite"

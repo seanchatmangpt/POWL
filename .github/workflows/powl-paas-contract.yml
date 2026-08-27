@@ -1,0 +1,124 @@
+name: POWL PaaS Contract
+
+on:
+  pull_request:
+    paths:
+      - "platform/**"
+      - "powl/paas.py"
+      - "tests/test_paas_bridge.py"
+      - "ontology/ggen-runtime-capabilities.ttl"
+      - "templates/powl-paas-resource-manifest.md.tera"
+      - "docs/reference/powl-paas-resource-manifest.md"
+      - "ggen.toml"
+      - ".github/workflows/powl-paas-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    env:
+      ASH_R2RML_SHA: 067954ad406fd637fd47646bdb10c4580809c79d
+      GGEN_SHA: ddfa602bfbab57b7ed5150f61b0acac7a41e3020
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify authority fence
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'REPLAY_ONLY' powl/paas.py
+          grep -q 'CONSTRUCT_ONLY' platform/lib/powl_platform_run_reactor.ex
+          ! grep -R -E --line-number '(kubectl|terraform)[[:space:]]+apply|pip[[:space:]]+publish|twine[[:space:]]+upload' \
+            platform powl/paas.py .github/workflows/powl-paas-contract.yml
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install POWL test subject
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+
+      - name: Execute canonical Python POWL bridge tests
+        run: python -m pytest tests/test_paas_bridge.py -q
+
+      - name: Set up BEAM
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "29.0"
+          elixir-version: "1.20.2"
+
+      - name: Verify AshR2RML exact producer identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/seanchatmangpt/ash_r2rml.git /tmp/ash_r2rml
+          git -C /tmp/ash_r2rml checkout --detach "$ASH_R2RML_SHA"
+          test "$(git -C /tmp/ash_r2rml rev-parse HEAD)" = "$ASH_R2RML_SHA"
+          grep -q "$ASH_R2RML_SHA" platform/mix.exs
+
+      - name: Compile and test Ash/AshR2RML/Reactor control plane
+        working-directory: platform
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix compile --warnings-as-errors
+          mix test
+
+      - name: Build exact ggen producer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install nightly --profile minimal
+          git clone --filter=blob:none https://github.com/seanchatmangpt/ggen.git /tmp/ggen
+          git -C /tmp/ggen checkout --detach "$GGEN_SHA"
+          test "$(git -C /tmp/ggen rev-parse HEAD)" = "$GGEN_SHA"
+          cargo +nightly build --locked --manifest-path /tmp/ggen/Cargo.toml --bin ggen --release
+
+      - name: Manufacture PaaS manifest with ggen
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/ggen/target/release/ggen -- sync run
+          test -s docs/reference/powl-paas-resource-manifest.md
+          test -s .ggen-v2/receipt.json
+          git diff --exit-code -- docs/reference/powl-paas-resource-manifest.md docs/reference/ggen-runtime-capabilities.md
+
+      - name: Emit contract receipt
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, os
+          paths = [
+              pathlib.Path("ontology/ggen-runtime-capabilities.ttl"),
+              pathlib.Path("platform/lib/powl_platform.ex"),
+              pathlib.Path("platform/lib/powl_platform_run_reactor.ex"),
+              pathlib.Path("powl/paas.py"),
+              pathlib.Path(".ggen-v2/receipt.json"),
+          ]
+          receipt = {
+              "status": "ALIVE",
+              "standing": "exact-head-contract",
+              "subject": os.environ.get("GITHUB_SHA", ""),
+              "ash_r2rml_sha": os.environ["ASH_R2RML_SHA"],
+              "ggen_sha": os.environ["GGEN_SHA"],
+              "execution_mode": "REPLAY_ONLY",
+              "files": {
+                  str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                  for path in paths
+              },
+          }
+          out = pathlib.Path("receipts/powl-paas-contract.json")
+          out.parent.mkdir(exist_ok=True)
+          out.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+          print(out.read_text())
+          PY
