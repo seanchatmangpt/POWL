@@ -30,3 +30,9 @@ powl:typed-standing a skos:Concept ;
 
 powl:surface a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
 powl:authority a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
+
+powl:exact-subject-identity a skos:Concept ;
+  skos:prefLabel "Exact subject identity" ;
+  dcterms:description "Pins generated consequences to an exact repository subject identity." ;
+  powl:surface "identity|subject|sha" ;
+  powl:authority "VERIFY_ONLY" .
