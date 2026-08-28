@@ -62,13 +62,10 @@ defmodule PowlPlatformTest do
 
     ontology = File.read!(Path.expand("../../ontology/ggen-runtime-capabilities.ttl", __DIR__))
 
-    for iri <- [
-          "https://powl.dev/ontology/ggen-runtime#ProcessModel",
-          "https://powl.dev/ontology/ggen-runtime#WorkflowRun",
-          "https://powl.dev/ontology/ggen-runtime#Receipt",
-          "https://powl.dev/ontology/ggen-runtime#Intent"
-        ] do
-      assert ontology =~ iri
+    assert ontology =~ "@prefix powl: <https://powl.dev/ontology/ggen-runtime#>"
+
+    for local_name <- ["ProcessModel", "WorkflowRun", "Receipt", "Intent"] do
+      assert ontology =~ "powl:#{local_name} "
     end
   end
 end
