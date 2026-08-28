@@ -1,0 +1,8 @@
+{
+  "schema": "ggen.orthogonal-consumer-capital/1",
+  "authority": "SELECT|CONSTRUCT|VERIFY",
+  "consequential_do": false,
+  "targets": [
+  {"repository":"seanchatmangpt/POWL","expected_yield":1110,"dependency_unlocks":2110,"composition_unlocks":3110,"future_capacity":4110}
+  ]
+}
