@@ -1,0 +1,153 @@
+@prefix powl: <https://powl.dev/ontology/ggen-runtime#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+powl:exact-subject-identity a skos:Concept ;
+  skos:prefLabel "Exact subject identity" ;
+  dcterms:description "Pins generated consequences to an exact repository subject identity." ;
+  powl:surface "identity|subject|sha" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:authority-contract a skos:Concept ;
+  skos:prefLabel "Authority contract" ;
+  dcterms:description "Carries explicit SELECT CONSTRUCT VERIFY and BRCE-boundary authority semantics." ;
+  powl:surface "authority|brce" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:receipt-policy a skos:Concept ;
+  skos:prefLabel "Receipt policy" ;
+  dcterms:description "Requires consequence receipts to bind subject authority and result identity." ;
+  powl:surface "receipt|policy" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:deterministic-replay a skos:Concept ;
+  skos:prefLabel "Deterministic replay" ;
+  dcterms:description "Replays the same admitted inputs to the same projected consequence." ;
+  powl:surface "replay|determinism" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:ocel-evidence a skos:Concept ;
+  skos:prefLabel "OCEL evidence" ;
+  dcterms:description "Emits object-centric event evidence for process observation without actuation authority." ;
+  powl:surface "ocel|evidence" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:idempotency-contract a skos:Concept ;
+  skos:prefLabel "Idempotency contract" ;
+  dcterms:description "Provides stable idempotency identity for repeated runtime requests." ;
+  powl:surface "idempotency|runtime" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:transaction-boundary a skos:Concept ;
+  skos:prefLabel "Transaction boundary" ;
+  dcterms:description "Declares bounded transactional scope around state-changing workflow activities." ;
+  powl:surface "transaction|boundary" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:compensation-contract a skos:Concept ;
+  skos:prefLabel "Compensation contract" ;
+  dcterms:description "Declares compensating action requirements for reversible workflow effects." ;
+  powl:surface "compensation|recovery" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:retry-policy a skos:Concept ;
+  skos:prefLabel "Retry policy" ;
+  dcterms:description "Defines bounded retry semantics with typed exhaustion behavior." ;
+  powl:surface "retry|policy" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:timeout-policy a skos:Concept ;
+  skos:prefLabel "Timeout policy" ;
+  dcterms:description "Defines explicit runtime timeout bounds and typed timeout standing." ;
+  powl:surface "timeout|policy" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:schema-contract a skos:Concept ;
+  skos:prefLabel "Schema contract" ;
+  dcterms:description "Binds runtime payloads to an admitted schema identity." ;
+  powl:surface "schema|contract" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:typed-refusal a skos:Concept ;
+  skos:prefLabel "Typed refusal" ;
+  dcterms:description "Preserves REFUSED as a typed non-actuating result distinct from failure." ;
+  powl:surface "refusal|standing" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:dependency-digest a skos:Concept ;
+  skos:prefLabel "Dependency digest" ;
+  dcterms:description "Binds consumer behavior to exact dependency identity." ;
+  powl:surface "dependency|digest" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:config-digest a skos:Concept ;
+  skos:prefLabel "Configuration digest" ;
+  dcterms:description "Binds projected behavior to exact admitted configuration identity." ;
+  powl:surface "config|digest" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:capability-version a skos:Concept ;
+  skos:prefLabel "Capability version identity" ;
+  dcterms:description "Carries exact capability version identity into generated runtime surfaces." ;
+  powl:surface "capability|version" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:execution-clock a skos:Concept ;
+  skos:prefLabel "Execution clock identity" ;
+  dcterms:description "Binds runtime evidence to an explicit execution clock identity." ;
+  powl:surface "clock|evidence" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:rate-limit a skos:Concept ;
+  skos:prefLabel "Rate limit contract" ;
+  dcterms:description "Declares bounded request capacity and refusal when capacity is exceeded." ;
+  powl:surface "rate-limit|capacity" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:error-contract a skos:Concept ;
+  skos:prefLabel "Domain error contract" ;
+  dcterms:description "Projects stable typed domain errors instead of unstructured failures." ;
+  powl:surface "error|domain" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:persistence-contract a skos:Concept ;
+  skos:prefLabel "Persistence contract" ;
+  dcterms:description "Declares durable state identity and replay-safe persistence boundaries." ;
+  powl:surface "persistence|state" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:event-emission a skos:Concept ;
+  skos:prefLabel "Event emission witness" ;
+  dcterms:description "Projects typed event emission requirements for observable workflow transitions." ;
+  powl:surface "event|witness" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:object-relation a skos:Concept ;
+  skos:prefLabel "Object relation witness" ;
+  dcterms:description "Preserves typed object relations in event and receipt evidence." ;
+  powl:surface "object|relation" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:recovery-path a skos:Concept ;
+  skos:prefLabel "Durable recovery path" ;
+  dcterms:description "Requires a declared recovery path for externally consequential workflow work." ;
+  powl:surface "recovery|durability" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:consumer-realization a skos:Concept ;
+  skos:prefLabel "Consumer realization frontier" ;
+  dcterms:description "Distinguishes projected capability presence from qualified consumer realization." ;
+  powl:surface "consumer|qualification" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:compatibility-contract a skos:Concept ;
+  skos:prefLabel "Compatibility contract" ;
+  dcterms:description "Binds producer consumer compatibility to exact admitted identities." ;
+  powl:surface "compatibility|producer-consumer" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:source-correspondence a skos:Concept ;
+  skos:prefLabel "Source correspondence" ;
+  dcterms:description "Refuses drift between canonical semantic source and generated consumer consequence." ;
+  powl:surface "source|correspondence" ;
+  powl:authority "VERIFY_ONLY" .
