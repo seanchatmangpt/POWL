@@ -1,7 +1,19 @@
 @prefix powl: <https://powl.dev/ontology/ggen-runtime#> .
+@prefix powl2: <https://w3id.org/powl/v2#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix org: <http://www.w3.org/ns/org#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://powl.dev/ontology/ggen-runtime> a owl:Ontology ;
+  dcterms:title "POWL ggen runtime and PaaS application ontology" ;
+  dcterms:description "Construction-time source for POWL runtime capabilities and the Ash/AshR2RML/Reactor PaaS semantic boundary." .
 
 powl:process-discovery a skos:Concept ;
   skos:prefLabel "POWL process discovery" ;
@@ -28,5 +40,70 @@ powl:typed-standing a skos:Concept ;
   powl:surface "standing|evidence" ;
   powl:authority "VERIFY_ONLY" .
 
-powl:surface a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
-powl:authority a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .
+powl:PlatformResource a owl:Class ;
+  rdfs:label "POWL PaaS operational resource" .
+
+powl:ProcessModel a owl:Class, powl:PlatformResource ;
+  rdfs:subClassOf powl2:Model, prov:Entity ;
+  skos:prefLabel "Process model" ;
+  dcterms:description "An admitted POWL model stored by the Ash control plane; Python POWL remains the semantic model implementation." ;
+  powl:ashModule "PowlPlatform.ProcessModel" ;
+  powl:tableName "powl_process_models" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:WorkflowRun a owl:Class, powl:PlatformResource ;
+  rdfs:subClassOf prov:Activity ;
+  skos:prefLabel "Workflow run" ;
+  dcterms:description "A run binding and standing for an exact admitted POWL subject." ;
+  powl:ashModule "PowlPlatform.WorkflowRun" ;
+  powl:tableName "powl_workflow_runs" ;
+  powl:authority "BRCE_BOUNDARY" .
+
+powl:Receipt a owl:Class, powl:PlatformResource ;
+  rdfs:subClassOf prov:Entity ;
+  skos:prefLabel "Actuation or run receipt" ;
+  dcterms:description "Evidence emitted by or derived from the POWL receipted runtime. A named receipt is not accepted as evidence without the bound subject and consequence digest." ;
+  powl:ashModule "PowlPlatform.Receipt" ;
+  powl:tableName "powl_receipts" ;
+  powl:authority "VERIFY_ONLY" .
+
+powl:Intent a owl:Class, powl:PlatformResource ;
+  rdfs:subClassOf prov:Plan ;
+  skos:prefLabel "Execution intent" ;
+  dcterms:description "A constructed request for execution. Intent is deliberately non-actuating and carries no ambient DO authority." ;
+  powl:ashModule "PowlPlatform.Intent" ;
+  powl:tableName "powl_intents" ;
+  powl:authority "CONSTRUCT_ONLY" .
+
+powl:POWLCatalog a owl:Class ;
+  rdfs:subClassOf dcat:Catalog ;
+  rdfs:label "POWL catalog" .
+
+powl:POWLRuntimeService a owl:Class ;
+  rdfs:subClassOf dcat:DataService ;
+  rdfs:label "POWL runtime service" .
+
+powl:TenantOrganization a owl:Class ;
+  rdfs:subClassOf org:Organization ;
+  rdfs:label "POWL tenant organization" .
+
+powl:ExecutionPolicy a owl:Class ;
+  rdfs:subClassOf odrl:Policy ;
+  rdfs:label "POWL execution policy" .
+
+powl:modelDigest a rdf:Property ; rdfs:range xsd:string .
+powl:standing a rdf:Property ; rdfs:range xsd:string .
+powl:receiptDigest a rdf:Property ; rdfs:range xsd:string .
+powl:executionMode a rdf:Property ; rdfs:range xsd:string .
+powl:runId a rdf:Property ; rdfs:range xsd:string .
+powl:stepId a rdf:Property ; rdfs:range xsd:string .
+powl:stepKind a rdf:Property ; rdfs:range xsd:string .
+powl:consequenceDigest a rdf:Property ; rdfs:range xsd:string .
+powl:intentKind a rdf:Property ; rdfs:range xsd:string .
+powl:intentStatus a rdf:Property ; rdfs:range xsd:string .
+powl:organizationIri a rdf:Property ; rdfs:range xsd:anyURI .
+powl:policyIri a rdf:Property ; rdfs:range xsd:anyURI .
+powl:surface a rdf:Property .
+powl:authority a rdf:Property .
+powl:ashModule a rdf:Property ; rdfs:range xsd:string .
+powl:tableName a rdf:Property ; rdfs:range xsd:string .
